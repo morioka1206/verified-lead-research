@@ -34,6 +34,7 @@ class OutputTests(unittest.TestCase):
             "claims": [
                 {
                     "type": "product",
+                    "evidence_url": "https://example.com/about",
                     "evidence_text_original": "We import matcha.",
                     "evidence_text_ja": "抹茶を輸入している。",
                 }
@@ -42,6 +43,9 @@ class OutputTests(unittest.TestCase):
         }
         row = finalize_run.csv_row(record)
         self.assertEqual(row["商材の証拠"], "抹茶を輸入している。")
+        self.assertEqual(row["商材の証拠URL"], "https://example.com/about")
+        self.assertIn("会社の役割の証拠URL", row)
+        self.assertIn("対象地域の証拠URL", row)
         self.assertNotIn("We import matcha.", row.values())
         self.assertEqual(record["claims"][0]["evidence_text_original"], "We import matcha.")
 

@@ -23,8 +23,11 @@ CSV_COLUMNS = [
     "問い合わせフォームURL",
     "判定",
     "商材の証拠",
+    "商材の証拠URL",
     "会社の役割の証拠",
+    "会社の役割の証拠URL",
     "対象地域の証拠",
+    "対象地域の証拠URL",
     "確認日時",
     "human_verdict",
     "human_notes",
@@ -36,6 +39,16 @@ def claim_text(record: dict[str, Any], claim_type: str) -> str:
         claim.get("evidence_text_ja") or claim.get("evidence_text_original", "")
         for claim in record["claims"]
         if claim.get("type") == claim_type
+    )
+
+
+def claim_urls(record: dict[str, Any], claim_type: str) -> str:
+    return " / ".join(
+        dict.fromkeys(
+            claim.get("evidence_url", "")
+            for claim in record["claims"]
+            if claim.get("type") == claim_type and claim.get("evidence_url")
+        )
     )
 
 
@@ -51,8 +64,11 @@ def csv_row(record: dict[str, Any]) -> dict[str, str]:
         "問い合わせフォームURL": " / ".join(item["url"] for item in record.get("contact_forms") or []),
         "判定": record.get("verification_status") or "",
         "商材の証拠": claim_text(record, "product"),
+        "商材の証拠URL": claim_urls(record, "product"),
         "会社の役割の証拠": claim_text(record, "buyer_role"),
+        "会社の役割の証拠URL": claim_urls(record, "buyer_role"),
         "対象地域の証拠": claim_text(record, "target_market"),
+        "対象地域の証拠URL": claim_urls(record, "target_market"),
         "確認日時": record.get("checked_at") or "",
         "human_verdict": "",
         "human_notes": "",
