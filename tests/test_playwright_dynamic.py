@@ -6,7 +6,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPTS = ROOT / "skill" / "verifying-sales-leads" / "scripts"
+SCRIPTS = ROOT / "skills" / "verifying-sales-leads" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 import leadlib  # noqa: E402

@@ -9,13 +9,15 @@ Create prospect lists from retrieved evidence, never from model memory alone.
 
 ## Required inputs
 
-Establish the product or service, target geography, sales objective, desired buyer types, exclusions, and requested result count. Make reasonable defaults when a missing field does not materially change the research.
+Before searching, run the structured intake in [references/intake-interview.md](references/intake-interview.md). Establish the product or service, target geography, sales objective, desired buyer types, definition of target-market activity, exclusions, contact preference, and requested result count.
+
+Use a selection tool when one is available. Treat the intake as a branching decision tree, not a fixed questionnaire: adapt follow-up questions to the product, market, objective, and prior answers. Ask 1–3 decisions per round, put the recommended choice first, explain its effect briefly, and ask only the next questions whose prerequisites are already settled. Skip irrelevant branches and do not re-ask facts already present in the conversation. Research discoverable facts yourself; ask the user only for business decisions. Keep the v1 output fixed as Japanese CSV plus audit JSON unless the user requests another format, so do not routinely ask about output format. Do not begin candidate discovery until the user has confirmed the final campaign brief.
 
 For reusable or multi-run work, represent these inputs using [references/campaign-schema.md](references/campaign-schema.md). Use [references/example-campaign.json](references/example-campaign.json) as the initial matcha/United States pilot.
 
 ## Workflow
 
-1. Turn the conversation into a campaign JSON. Confirm product, market, buyer roles, target count, and exclusions.
+1. Complete the structured intake, show the final campaign brief, and obtain the user's explicit choice to begin. Turn the confirmed brief into a campaign JSON.
 2. Generate multiple localized search queries. Use the client's web search to discover candidates; never invent a company or URL.
 3. Save candidate URLs with the discovery query and search-result source URL. Run `scripts/prepare_candidates.py` to normalize and deduplicate official domains.
 4. Run `scripts/crawl_candidates.py`. It checks static HTML first, uses local Playwright only for JavaScript-dependent pages, and inspects at most five high-value pages per company.

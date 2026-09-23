@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>証拠付き営業リスト — はじめてガイド</title>
+  <meta name="description" content="公式サイトの証拠付きで営業候補を探すSkillの説明、インストール、使い方。">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%232383e2'/%3E%3Cpath d='M18 33l9 9 20-23' fill='none' stroke='white' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      --text: #37352f;
+      --muted: #787774;
+      --faint: #9b9a97;
+      --line: #e9e9e7;
+      --surface: #f7f7f5;
+      --blue: #2383e2;
+      --blue-soft: #edf6ff;
+      --green: #0f7b6c;
+      --green-soft: #edf7f4;
+      --yellow-soft: #fff7df;
+      --red-soft: #fff0ee;
+      --code: #f1f1ef;
+      --sidebar: 230px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--text);
+      background: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", "Noto Sans JP", sans-serif;
+      font-size: 16px;
+      line-height: 1.75;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--blue); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+    button { font: inherit; }
+    code { padding: .15em .35em; background: var(--code); border-radius: 4px; font-size: .9em; }
+    .skip { position: absolute; left: -9999px; }
+    .skip:focus { left: 12px; top: 12px; z-index: 100; padding: 10px 14px; background: #fff; border: 1px solid var(--line); }
+
+    .appbar { position: sticky; top: 0; z-index: 20; height: 52px; background: rgba(255,255,255,.94); border-bottom: 1px solid var(--line); backdrop-filter: blur(12px); }
+    .appbar-inner { max-width: 1180px; height: 100%; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; }
+    .brand { display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-size: .92rem; font-weight: 650; }
+    .brand-mark { width: 24px; height: 24px; display: grid; place-items: center; color: #fff; background: var(--blue); border-radius: 6px; font-size: .82rem; }
+    .version { color: var(--muted); font-size: .78rem; }
+
+    .layout { width: min(1180px, calc(100% - 40px)); margin: 0 auto; display: grid; grid-template-columns: var(--sidebar) minmax(0, 780px); gap: 72px; justify-content: center; }
+    aside { position: sticky; top: 84px; align-self: start; padding: 32px 0; font-size: .85rem; }
+    .toc-title { margin: 0 0 10px; color: var(--faint); font-size: .72rem; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
+    .toc { display: grid; gap: 2px; }
+    .toc a { padding: 5px 10px; color: var(--muted); text-decoration: none; border-radius: 6px; }
+    .toc a:hover { color: var(--text); background: var(--surface); }
+
+    main { min-width: 0; padding: 56px 0 100px; }
+    section { padding: 42px 0; border-top: 1px solid var(--line); scroll-margin-top: 70px; }
+    section:first-of-type { border-top: 0; }
+    .kicker { margin: 0 0 10px; color: var(--blue); font-size: .78rem; font-weight: 700; letter-spacing: .06em; }
+    h1 { max-width: 720px; margin: 0; font-size: clamp(2rem, 5vw, 2.8rem); line-height: 1.25; letter-spacing: -.035em; font-weight: 720; }
+    h2 { margin: 0 0 12px; font-size: clamp(1.45rem, 3vw, 1.85rem); line-height: 1.35; letter-spacing: -.02em; font-weight: 700; }
+    h3 { margin: 0 0 8px; font-size: 1.05rem; line-height: 1.5; font-weight: 680; }
+    p { margin: 0 0 14px; }
+    .lede { max-width: 690px; margin: 18px 0 22px; color: var(--muted); font-size: 1.05rem; }
+    .meta-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pill { padding: 5px 10px; color: var(--muted); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; font-size: .78rem; }
+    .jump-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+    .button { display: inline-flex; align-items: center; gap: 7px; padding: 9px 14px; color: #fff; background: var(--blue); border: 1px solid var(--blue); border-radius: 7px; text-decoration: none; font-size: .88rem; font-weight: 650; }
+    .button.secondary { color: var(--text); background: #fff; border-color: #d8d8d6; }
+
+    .callout { margin: 20px 0; padding: 16px 18px; background: var(--blue-soft); border-radius: 8px; }
+    .callout strong { display: block; margin-bottom: 3px; }
+    .callout.yellow { background: var(--yellow-soft); }
+    .callout.green { background: var(--green-soft); }
+    .callout.red { background: var(--red-soft); }
+
+    .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 22px; }
+    .feature { padding: 18px; border: 1px solid var(--line); border-radius: 9px; }
+    .feature-icon { width: 30px; height: 30px; margin-bottom: 12px; display: grid; place-items: center; color: var(--blue); background: var(--blue-soft); border-radius: 7px; font-weight: 750; font-size: .82rem; }
+    .feature p { margin: 0; color: var(--muted); font-size: .9rem; }
+
+    .comparison { width: 100%; margin: 22px 0; border-collapse: separate; border-spacing: 0; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; font-size: .9rem; }
+    .comparison th, .comparison td { padding: 13px 15px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+    .comparison tr:last-child td { border-bottom: 0; }
+    .comparison th { background: var(--surface); font-size: .8rem; }
+    .comparison th:first-child { width: 24%; }
+    .comparison td:nth-child(3), .comparison th:nth-child(3) { background: #f8fbff; }
+    .good { color: var(--green); font-weight: 680; }
+    .risk { color: #b04a3a; }
+
+    .pipeline { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 22px 0; }
+    .pipe { position: relative; min-height: 118px; padding: 13px; background: var(--surface); border-radius: 8px; font-size: .82rem; }
+    .pipe:not(:last-child)::after { content: "→"; position: absolute; right: -8px; top: 44px; z-index: 1; color: var(--faint); }
+    .pipe b { display: block; margin-bottom: 7px; color: var(--blue); font-size: .7rem; letter-spacing: .05em; }
+    .pipe strong { display: block; margin-bottom: 5px; font-size: .9rem; line-height: 1.4; }
+    .pipe span { color: var(--muted); line-height: 1.5; }
+
+    .criteria { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 10px; align-items: center; margin: 20px 0; }
+    .criterion { padding: 16px; background: var(--surface); border-radius: 8px; text-align: center; font-size: .88rem; }
+    .plus { color: var(--faint); }
+
+    .steps { counter-reset: install; display: grid; gap: 12px; margin: 22px 0; }
+    .step { position: relative; padding: 18px 18px 18px 58px; border: 1px solid var(--line); border-radius: 9px; }
+    .step::before { counter-increment: install; content: counter(install); position: absolute; left: 17px; top: 17px; width: 26px; height: 26px; display: grid; place-items: center; color: #fff; background: var(--blue); border-radius: 50%; font-size: .78rem; font-weight: 700; }
+    .step p { margin: 3px 0 0; color: var(--muted); font-size: .9rem; }
+
+    .codebox { position: relative; margin: 14px 0; padding: 16px 94px 16px 16px; overflow-x: auto; background: #f7f7f5; border: 1px solid var(--line); border-radius: 8px; }
+    .codebox pre { margin: 0; white-space: pre-wrap; word-break: break-word; font: .82rem/1.65 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .copy { position: absolute; top: 9px; right: 9px; padding: 5px 9px; color: var(--muted); background: #fff; border: 1px solid #d8d8d6; border-radius: 5px; cursor: pointer; font-size: .75rem; }
+    .copy:hover { color: var(--text); }
+
+    .tabs { margin-top: 22px; }
+    .tablist { display: flex; gap: 4px; padding: 4px; width: fit-content; background: var(--surface); border-radius: 8px; }
+    .tab { padding: 7px 12px; color: var(--muted); background: transparent; border: 0; border-radius: 6px; cursor: pointer; font-size: .84rem; }
+    .tab[aria-selected="true"] { color: var(--text); background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    .tabpanel { padding-top: 16px; }
+    .tabpanel[hidden] { display: none; }
+
+    .output { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+    .output-card { padding: 18px; background: var(--surface); border-radius: 9px; }
+    .output-card ul { margin: 10px 0 0; padding-left: 1.2em; color: var(--muted); font-size: .9rem; }
+
+    .result-line { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin-top: 20px; overflow: hidden; background: var(--line); border: 1px solid var(--line); border-radius: 9px; }
+    .result-line div { padding: 18px; background: #fff; text-align: center; }
+    .result-line strong { display: block; font-size: 1.45rem; }
+    .result-line span { color: var(--muted); font-size: .8rem; }
+
+    details { border-top: 1px solid var(--line); }
+    details:last-child { border-bottom: 1px solid var(--line); }
+    summary { padding: 14px 4px; cursor: pointer; font-weight: 620; }
+    details > div { padding: 0 4px 16px; color: var(--muted); font-size: .92rem; }
+
+    footer { padding: 28px 0; color: var(--faint); border-top: 1px solid var(--line); font-size: .8rem; }
+
+    @media (max-width: 900px) {
+      .layout { display: block; width: min(760px, calc(100% - 36px)); }
+      aside { display: none; }
+      main { padding-top: 38px; }
+    }
+    @media (max-width: 620px) {
+      .appbar-inner { padding: 0 16px; }
+      .layout { width: min(100% - 28px, 760px); }
+      .feature-grid, .output, .result-line { grid-template-columns: 1fr; }
+      .pipeline { grid-template-columns: 1fr; }
+      .pipe:not(:last-child)::after { display: none; }
+      .criteria { grid-template-columns: 1fr; }
+      .plus { text-align: center; }
+      .comparison { display: block; overflow-x: auto; }
+      h1 { font-size: 2rem; }
+    }
+    @media print {
+      .appbar, aside, .copy, .jump-row { display: none; }
+      .layout { display: block; width: 100%; }
+      main { padding: 0; }
+      section { break-inside: avoid; }
+      body { font-size: 11pt; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">本文へ移動</a>
+  <header class="appbar">
+    <div class="appbar-inner">
+      <a class="brand" href="#top"><span class="brand-mark">✓</span><span>証拠付き営業リスト</span></a>
+      <span class="version">配布版 v1 · Mac</span>
+    </div>
+  </header>
+
+  <div class="layout" id="top">
+    <aside aria-label="目次">
+      <p class="toc-title">このガイド</p>
+      <nav class="toc">
+        <a href="#about">どんなSkill？</a>
+        <a href="#benefits">何ができる？</a>
+        <a href="#difference">なぜ信頼できる？</a>
+        <a href="#install">インストール</a>
+        <a href="#start">最初の使い方</a>
+        <a href="#output">受け取るもの</a>
+        <a href="#limits">できないこと</a>
+        <a href="#faq">困ったとき</a>
+      </nav>
+    </aside>
+
+    <main id="main">
+      <section id="about">
+        <p class="kicker">VERIFIED LEAD RESEARCH</p>
+        <h1>公式サイトの証拠付きで、営業候補を探すSkill</h1>
+        <p class="lede">売りたい商材、対象国、会いたい企業を伝えると、候補企業の公式サイトを確認し、なぜ候補に入れたのかまで残します。会社名やURLをAIの想像だけで作りません。</p>
+        <div class="meta-row"><span class="pill">Codex対応</span><span class="pill">Claude Code対応</span><span class="pill">AI API契約不要</span><span class="pill">営業送信なし</span></div>
+        <div class="jump-row"><a class="button" href="#install">インストールする</a><a class="button secondary" href="#difference">普通のAIとの違い</a></div>
+        <div class="callout yellow"><strong>ひとことで言うと</strong>「会社をたくさん挙げるAI」ではなく、「会社を一社ずつ確かめるAI」です。</div>
+      </section>
+
+      <section id="benefits">
+        <h2>このSkillでできること</h2>
+        <p>抹茶や和牛だけでなく、売りたいものと営業目的を変えて使えます。</p>
+        <div class="feature-grid">
+          <article class="feature"><div class="feature-icon">聞</div><h3>条件を選択式で整理</h3><p>固定アンケートではなく、商材と回答に合わせて必要な質問だけを出します。</p></article>
+          <article class="feature"><div class="feature-icon">探</div><h3>海外の候補企業を発見</h3><p>輸入、卸、販売店、ホテル、工場、代理店、提携先などを探せます。</p></article>
+          <article class="feature"><div class="feature-icon">確</div><h3>公式サイトを確認</h3><p>トップ、会社概要、商品、卸売、問い合わせなどを一社最大5ページ確認します。</p></article>
+          <article class="feature"><div class="feature-icon">残</div><h3>証拠を一緒に保存</h3><p>会社名とURLだけでなく、公式サイトの原文、掲載ページ、確認日時を残します。</p></article>
+          <article class="feature"><div class="feature-icon">連</div><h3>公開連絡先を収集</h3><p>公開メールだけを取得。問い合わせフォームは普通に見つかった時だけ保存します。</p></article>
+          <article class="feature"><div class="feature-icon">分</div><h3>不確かな会社を分離</h3><p>証拠不足、対象外、取得不能を分け、無理に「合格」へ入れません。</p></article>
+        </div>
+        <div class="callout green"><strong>商材例</strong>食品、飲料、機械、素材、化粧品、日用品、法人向けサービス。B2Bの相手を公式サイトで確認できる商材に向いています。</div>
+      </section>
+
+      <section id="difference">
+        <h2>普通のAIリストより、なぜ信頼しやすいの？</h2>
+        <p>違いはAIモデルの名前ではなく、調べ方にあります。ChatGPTやClaudeへ一度に会社名を尋ねるだけでは、記憶、推測、古い情報が混ざることがあります。</p>
+        <table class="comparison">
+          <thead><tr><th>確認点</th><th>普通のAIリスト</th><th>このSkill</th></tr></thead>
+          <tbody>
+            <tr><td>会社名・URL</td><td class="risk">AIの記憶や推測が混ざることがある</td><td class="good">Webで候補を見つけ、公式サイトを取得</td></tr>
+            <tr><td>営業先との適合</td><td>「それらしい会社」を文章から判断</td><td class="good">3種類の公式サイト証拠を必須にする</td></tr>
+            <tr><td>メール</td><td class="risk">命名規則から推測する場合がある</td><td class="good">ページに公開されたメールだけ</td></tr>
+            <tr><td>根拠</td><td>説明文だけで、あとから確認しにくい</td><td class="good">原文・URL・確認日時を保存</td></tr>
+            <tr><td>分からない時</td><td class="risk">空欄を埋めようとすることがある</td><td class="good">確認待ち・対象外・取得不能に分ける</td></tr>
+          </tbody>
+        </table>
+
+        <h3>嘘を入りにくくする5つの関門</h3>
+        <div class="pipeline" aria-label="検証の5工程">
+          <div class="pipe"><b>01</b><strong>候補を検索</strong><span>会社を記憶だけで挙げない</span></div>
+          <div class="pipe"><b>02</b><strong>公式サイト取得</strong><span>URLが実際に開けるか確認</span></div>
+          <div class="pipe"><b>03</b><strong>3証拠を探す</strong><span>商材・役割・市場活動</span></div>
+          <div class="pipe"><b>04</b><strong>原文を再確認</strong><span>証拠文がページ内にあるか検査</span></div>
+          <div class="pipe"><b>05</b><strong>人が最終確認</strong><span>正しい・間違いを記録</span></div>
+        </div>
+
+        <p>企業が合格するには、次の3つがすべて必要です。</p>
+        <div class="criteria"><div class="criterion"><strong>商材との関係</strong><br>扱う・使う・販売する</div><div class="plus">＋</div><div class="criterion"><strong>会社の役割</strong><br>輸入・卸・購入など</div><div class="plus">＋</div><div class="criterion"><strong>対象市場の活動</strong><br>販売・配送・顧客・拠点</div></div>
+      </section>
+
+      <section id="install">
+        <p class="kicker">SETUP</p>
+        <h2>はじめてのインストール</h2>
+        <p>Mac向けです。最初だけ必要なブラウザ部品をダウンロードするため、通信環境により3〜10分ほどかかります。</p>
+        <div class="callout"><strong>先に必要なもの</strong>Mac、インターネット、CodexまたはClaude Code、Python 3。CodexとClaude Codeは、使いたい方だけで大丈夫です。</div>
+        <div class="steps">
+          <div class="step"><h3>受け取ったフォルダを開く</h3><p>`verified-lead-research` というフォルダです。ZIPで受け取った場合は、まずダブルクリックして展開します。</p></div>
+          <div class="step"><h3>`INSTALL.command` をダブルクリック</h3><p>黒い画面が開きます。英語が表示されても、閉じずにそのまま待ってください。</p></div>
+          <div class="step"><h3>「完了しました」を待つ</h3><p>必要な部品とブラウザを準備し、CodexとClaude Codeから使える場所へSkillを置きます。</p></div>
+          <div class="step"><h3>アプリを開き直す</h3><p>最後にEnterキーを押して黒い画面を閉じ、CodexまたはClaude Codeを再起動します。</p></div>
+          <div class="step"><h3>新しい会話で依頼する</h3><p>下の依頼文をコピーして試します。Skillが質問を始めれば成功です。</p></div>
+        </div>
+        <div class="callout yellow"><strong>Macに止められたら</strong>`INSTALL.command` を右クリック →「開く」→ もう一度「開く」。知らない配布元のファイルを開く警告が出た時だけ、この操作をします。</div>
+
+        <div class="tabs">
+          <div class="tablist" role="tablist" aria-label="利用環境">
+            <button class="tab" role="tab" aria-selected="true" aria-controls="codex-panel" id="codex-tab">Codex</button>
+            <button class="tab" role="tab" aria-selected="false" aria-controls="claude-panel" id="claude-tab">Claude Code</button>
+          </div>
+          <div class="tabpanel" role="tabpanel" id="codex-panel" aria-labelledby="codex-tab">
+            <p>Codexを完全に終了して開き直し、新しいタスクを作ります。特別なコマンドは不要です。</p>
+          </div>
+          <div class="tabpanel" role="tabpanel" id="claude-panel" aria-labelledby="claude-tab" hidden>
+            <p>Claude Codeを終了して開き直します。Skillを直接呼ぶ場合は <code>/verifying-sales-leads</code> と入力できます。</p>
+          </div>
+        </div>
+
+        <details><summary>Python 3が見つからないと言われた</summary><div><a href="https://www.python.org/downloads/macos/">Python公式サイト</a>からPython 3をインストールし、その後もう一度 `INSTALL.command` を開いてください。</div></details>
+        <details><summary>黒い画面を使わず、自分でインストールしたい</summary><div><div class="codebox"><button class="copy" type="button">コピー</button><pre>cd /受け取った場所/verified-lead-research
+python3 skills/verifying-sales-leads/scripts/bootstrap.py
+.venv/bin/python skills/verifying-sales-leads/scripts/install_skill.py</pre></div></div></details>
+        <details><summary>管理者としてClaude Code Pluginを直接テストしたい</summary><div><div class="codebox"><button class="copy" type="button">コピー</button><pre>claude --plugin-dir /受け取った場所/verified-lead-research</pre></div>この配布フォルダにはClaude Code用とCodex用のPlugin設定が両方入っています。</div></details>
+      </section>
+
+      <section id="start">
+        <h2>最初の使い方</h2>
+        <p>新しい会話へ、売りたいものと国を普通の日本語で書きます。</p>
+        <div class="codebox"><button class="copy" type="button">コピー</button><pre>日本産の業務用抹茶をアメリカへ売りたいです。
+輸入会社と卸会社の候補を、公式サイトの証拠付きで探してください。</pre></div>
+        <p>すぐには検索せず、Skillが選択式で質問します。質問は固定ではありません。食品なら業務用・小売用、機械なら代理店・導入企業など、今回の結果を変える内容だけを聞きます。</p>
+        <div class="callout green"><strong>検索が始まるタイミング</strong>最後に条件が一枚で表示されます。内容を確認して「この条件で調査を開始」を選ぶと、会社探しが始まります。</div>
+        <h3>ほかの依頼例</h3>
+        <ul><li>和牛をヨーロッパへ販売するため、食肉輸入会社を探す</li><li>包装機械を東南アジアへ販売するため、販売代理店を探す</li><li>日本の化粧品原料を韓国へ販売するため、メーカーと卸会社を探す</li><li>法人向けサービスの現地パートナー候補を探す</li></ul>
+      </section>
+
+      <section id="output">
+        <h2>最後に受け取るもの</h2>
+        <div class="output">
+          <article class="output-card"><h3>leads.csv</h3><p>営業担当が見る日本語の表。</p><ul><li>会社名と公式URL</li><li>公開メール</li><li>短い会社概要</li><li>証拠URL</li><li>人の確認欄</li></ul></article>
+          <article class="output-card"><h3>audit.json</h3><p>あとから判定を確かめる記録。</p><ul><li>全候補と判定</li><li>公式サイトの原文</li><li>証拠ページ</li><li>確認日時</li><li>不確かな点</li></ul></article>
+        </div>
+        <p style="margin-top:18px">最初の抹茶・アメリカ実験では、37候補を確認し、3証拠がそろった30社を出力しました。利用者が30社すべての公式URLを確認し、30社すべてを正しいと判定しました。</p>
+        <div class="result-line"><div><strong>37</strong><span>公式サイト確認</span></div><div><strong>30</strong><span>3証拠で合格</span></div><div><strong>30 / 30</strong><span>人の確認で正しい</span></div></div>
+      </section>
+
+      <section id="limits">
+        <h2>このSkillがしないこと</h2>
+        <ul><li>会社名、URL、メールアドレスを想像して埋める</li><li>問い合わせフォームや営業メールを送信する</li><li>CAPTCHAやBot対策を回避する</li><li>問い合わせフォームだけを探すため、無制限にクリックする</li><li>公式サイトだけを根拠に、法人登記済みだと断定する</li></ul>
+        <div class="callout red"><strong>30社に届かないことがあります</strong>証拠が足りない時は、数を埋めるために合格条件をゆるめません。不足数と理由を報告します。</div>
+      </section>
+
+      <section id="faq">
+        <h2>困ったとき</h2>
+        <details><summary>インストール後もSkillが始まりません</summary><div>CodexまたはClaude Codeを完全に終了し、開き直してから新しい会話を作ってください。古い会話では新しいSkillが読み込まれないことがあります。</div></details>
+        <details><summary>アップデートはどうしますか？</summary><div>新しい配布フォルダへ入れ替え、もう一度 `INSTALL.command` を開きます。このインストーラーが以前に置いたファイルだけを更新します。</div></details>
+        <details><summary>ChatGPTやClaudeのAPI契約は必要ですか？</summary><div>このSkillをCodexまたはClaude Codeの会話内で使う段階では、別のAI API契約は不要です。将来、独立したWebアプリとして自動運転する場合は別途実行基盤が必要です。</div></details>
+        <details><summary>問い合わせフォームが空欄でも大丈夫？</summary><div>大丈夫です。フォーム探索は補助機能です。会社の合否は、商材・会社の役割・対象市場の活動という3種類の証拠で決まります。</div></details>
+      </section>
+
+      <footer>証拠付き営業リスト · 配布版 v1 · 2026-09-24</footer>
+    </main>
+  </div>
+
+  <script>
+    document.querySelectorAll('.copy').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const text = button.parentElement.querySelector('pre').innerText;
+        try {
+          await navigator.clipboard.writeText(text);
+          button.textContent = 'コピー済み';
+          setTimeout(() => button.textContent = 'コピー', 1600);
+        } catch (_) {
+          button.textContent = '選択してコピー';
+        }
+      });
+    });
+
+    const tabs = document.querySelectorAll('[role="tab"]');
+    tabs.forEach((tab) => tab.addEventListener('click', () => {
+      tabs.forEach((item) => {
+        const selected = item === tab;
+        item.setAttribute('aria-selected', String(selected));
+        document.getElementById(item.getAttribute('aria-controls')).hidden = !selected;
+      });
+    }));
+  </script>
+</body>
+</html>

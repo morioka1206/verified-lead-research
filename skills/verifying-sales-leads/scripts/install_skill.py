@@ -22,7 +22,9 @@ MANAGED_MARKER = ".managed-source"
 
 def _same_source(marker: Path) -> bool:
     try:
-        return marker.read_text(encoding="utf-8").strip() == str(SKILL_DIR)
+        recorded = Path(marker.read_text(encoding="utf-8").strip())
+        legacy_skill_dir = SKILL_DIR.parents[1] / "skill" / SKILL_NAME
+        return recorded in {SKILL_DIR, legacy_skill_dir}
     except OSError:
         return False
 
@@ -61,6 +63,9 @@ def install_link(target: Path) -> None:
     if target.is_symlink() and target.resolve() == SKILL_DIR:
         print(f"already linked: {target}")
         return
+    legacy_skill_dir = SKILL_DIR.parents[1] / "skill" / SKILL_NAME
+    if target.is_symlink() and target.resolve(strict=False) == legacy_skill_dir.resolve(strict=False):
+        target.unlink()
     if target.exists() or target.is_symlink():
         raise FileExistsError(f"Refusing to replace existing path: {target}")
     target.symlink_to(SKILL_DIR, target_is_directory=True)

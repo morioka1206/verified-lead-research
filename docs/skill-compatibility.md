@@ -2,9 +2,14 @@
 
 ## 共通本体
 
-`skill/verifying-sales-leads/` を唯一の正本とします。調査フロー、証拠要件、スキーマ、実行スクリプトには特定のモデル名やベンダー固有APIを埋め込みません。
+`skills/verifying-sales-leads/` を唯一の正本とします。調査フロー、証拠要件、スキーマ、実行スクリプトには特定のモデル名やベンダー固有APIを埋め込みません。
 
 CodexとClaudeはいずれも、YAML frontmatterを持つ `SKILL.md` と、必要に応じて読み込む参照ファイル・実行スクリプトという構造を利用できます。
+
+公式資料：
+
+- OpenAI: https://developers.openai.com/plugins/build/plugins
+- Claude Code: https://code.claude.com/docs/en/plugins
 
 ## プラットフォーム固有部分
 
@@ -20,6 +25,24 @@ CodexとClaudeはいずれも、YAML frontmatterを持つ `SKILL.md` と、必�
 再実行時、Codex側はこのスクリプトが作ったコピーだけを更新します。無関係な既存フォルダやリンクは上書きせず停止します。Claude側のリンクは正本を直接参照します。どちらの場合も、編集する場所はリポジトリ内の正本です。
 
 Codexで先にテストし、その後Claude Codeで同じキャンペーン、クロール、評価スキーマを確認します。クライアントのWeb検索結果は完全一致を要求しません。
+
+## 他の人へ渡すPlugin版
+
+現在のリポジトリには共通Skillに加え、CodexとClaude Code向けの配布用Pluginマニフェストがあります。調査ロジックは複製せず、次の外箱を同じGitリポジトリへ置きます。
+
+```text
+plugin-root/
+├── plugin.json                    OpenAIのポータブルPlugin用
+├── .codex-plugin/plugin.json      Codex互換用
+├── .claude-plugin/plugin.json     Claude Code用
+└── skills/
+    └── verifying-sales-leads/
+        ├── SKILL.md
+        ├── references/
+        └── scripts/
+```
+
+Skill本体は共有できますが、OpenAIとClaude Codeのマーケットプレイスは別です。一方へ公開しただけで、もう一方へ自動公開されるとは扱いません。Claude Codeは開発時に `claude --plugin-dir <plugin-root>` でローカルPluginを読み込めます。
 
 ## AI APIとの関係
 

@@ -12,6 +12,7 @@
   },
   "market": {
     "name": "アメリカ",
+    "activity_evidence": "sales_shipping_customers_warehouse_or_office",
     "keywords": [
       "United States",
       "USA",
@@ -30,7 +31,10 @@
       "keywords": ["wholesale", "wholesaler", "distributor", "distribution", "foodservice"]
     }
   ],
+  "secondary_buyer_types": [],
   "excluded_types": ["consumer blog", "marketplace-only seller", "restaurant-only business"],
+  "excluded_companies": [],
+  "contact_preference": "public_email_then_optional_form",
   "target_accepted": 30,
   "max_candidates": 100,
   "max_pages_per_company": 5

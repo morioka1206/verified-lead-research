@@ -1,0 +1,21 @@
+{
+  "name": "verified-lead-research",
+  "version": "1.0.0",
+  "description": "Build evidence-backed B2B prospect lists from verified official websites.",
+  "author": { "name": "Verified Lead Research Project" },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Verified Lead Research",
+    "shortDescription": "公式サイトの証拠付きで営業候補を探す",
+    "longDescription": "商材、市場、営業目的を選択式で整理し、公式サイト上の3種類の証拠がそろった企業だけを営業リストへ出力します。",
+    "developerName": "Verified Lead Research Project",
+    "category": "Productivity",
+    "capabilities": ["Web research", "Evidence verification", "CSV export"],
+    "defaultPrompt": [
+      "売りたい商材と国から、証拠付きの営業候補リストを作りたい",
+      "輸入会社や卸会社の候補を公式サイトで確認してほしい",
+      "既存の候補企業を証拠付きで再確認してほしい"
+    ],
+    "brandColor": "#2383E2"
+  }
+}
