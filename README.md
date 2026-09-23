@@ -29,8 +29,20 @@
 - `src/`: 将来のアプリケーション実装
 - `tests/`: 判定ルールと抽出処理のテスト
 
+## セットアップと確認
+
+```bash
+python3 skill/verifying-sales-leads/scripts/bootstrap.py
+.venv/bin/python -m unittest discover -s tests -v
+.venv/bin/python skill/verifying-sales-leads/scripts/install_skill.py
+```
+
+Skillの正本は `skill/verifying-sales-leads/` です。インストーラーはCodexへ安全な通常コピーを置き、Claude Codeへ正本のシンボリックリンクを置きます。取得結果は `runs/<日時>/` に保存し、Gitには追加しません。
+
+調査時の詳しい順序、キャンペーン入力、AIから判定スクリプトへの受け渡しは、Skill本体と `references/` を参照してください。
+
 ## 現在の状態
 
-設計段階です。APIやクラウドサービスの契約はまだ必要ありません。
+Skill v1の道具本体は実装済みです。APIやクラウドサービスの契約は必要ありません。PlaywrightとChromiumはローカルへインストールします。現在は、抹茶・アメリカの30社実験と人による精度確認を残しています。
 
 Skillの共通部分は標準的な `SKILL.md`、`references/`、`scripts/` に限定します。`agents/openai.yaml` はCodex向けの任意メタデータであり、調査ロジックは含めません。

@@ -1,0 +1,37 @@
+{
+  "id": "matcha-us-importers",
+  "product": {
+    "name": "抹茶",
+    "description": "日本産抹茶を業務用に輸出する",
+    "keywords": [
+      "matcha",
+      "Japanese green tea",
+      "ceremonial grade matcha",
+      "culinary matcha"
+    ]
+  },
+  "market": {
+    "name": "アメリカ",
+    "keywords": [
+      "United States",
+      "USA",
+      "U.S.",
+      "US-based"
+    ]
+  },
+  "objective": "find_importers_and_wholesalers",
+  "buyer_types": [
+    {
+      "name": "輸入業者",
+      "keywords": ["importer", "imports", "importing"]
+    },
+    {
+      "name": "卸売業者・流通業者",
+      "keywords": ["wholesale", "wholesaler", "distributor", "distribution", "foodservice"]
+    }
+  ],
+  "excluded_types": ["consumer blog", "marketplace-only seller", "restaurant-only business"],
+  "target_accepted": 30,
+  "max_candidates": 100,
+  "max_pages_per_company": 5
+}

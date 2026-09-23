@@ -2,9 +2,14 @@
 .env
 .env.*
 !.env.example
+.venv/
+.playwright-browsers/
 node_modules/
 dist/
 coverage/
 .wrangler/
 tmp/
 *.log
+runs/
+__pycache__/
+*.py[cod]

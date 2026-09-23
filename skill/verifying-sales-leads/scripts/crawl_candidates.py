@@ -1,0 +1,46 @@
+#!/usr/bin/env python3
+"""Retrieve up to five relevant pages for each candidate company."""
+
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+
+from leadlib import crawl_company, validate_campaign
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--campaign", required=True, type=Path)
+    parser.add_argument("--candidates", required=True, type=Path)
+    parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--no-browser", action="store_true")
+    parser.add_argument("--timeout", type=float, default=15.0)
+    parser.add_argument("--delay", type=float, default=1.0, help="seconds between pages for one company")
+    args = parser.parse_args()
+    campaign = json.loads(args.campaign.read_text(encoding="utf-8"))
+    campaign_errors = validate_campaign(campaign)
+    if campaign_errors:
+        raise ValueError("; ".join(campaign_errors))
+    candidates = json.loads(args.candidates.read_text(encoding="utf-8"))
+    candidates = candidates[: int(campaign.get("max_candidates", 100))]
+    max_pages = min(int(campaign.get("max_pages_per_company", 5)), 5)
+    results = []
+    for index, candidate in enumerate(candidates, start=1):
+        result = crawl_company(
+            candidate,
+            max_pages=max_pages,
+            timeout=args.timeout,
+            browser_fallback=not args.no_browser,
+            delay_seconds=args.delay,
+        )
+        results.append(result)
+        print(f"[{index}/{len(candidates)}] {candidate['url']} -> {result['site_status']}")
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(results, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

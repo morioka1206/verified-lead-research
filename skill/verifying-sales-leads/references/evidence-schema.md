@@ -9,32 +9,44 @@ Produce one record per canonical company domain.
   "final_url": "",
   "country": null,
   "company_type": null,
-  "product_fit": "unknown",
-  "fit_score": 0,
+  "company_overview_ja": "",
   "claims": [
     {
-      "claim": "",
+      "type": "product",
       "evidence_url": "",
-      "evidence_text": ""
+      "evidence_text_original": "",
+      "evidence_text_ja": ""
     }
   ],
-  "email": null,
-  "email_source_url": null,
-  "contact_form_url": null,
-  "site_status": "active",
+  "emails": [
+    {
+      "email": "",
+      "source_url": ""
+    }
+  ],
+  "contact_forms": [
+    {
+      "url": "",
+      "verification": "form_found"
+    }
+  ],
   "verification_status": "review",
   "rejection_reason": null,
   "uncertainties": [],
-  "checked_at": ""
+  "checked_at": "",
+  "discovery": {
+    "query": "",
+    "source_url": ""
+  }
 }
 ```
 
 ## Allowed status values
 
-- `site_status`: `active`, `blocked`, `dead`, `parked`, `unknown`
 - `verification_status`: `accepted`, `review`, `rejected`, `blocked`
-- `product_fit`: `high`, `medium`, `low`, `unknown`
+- claim `type`: `product`, `buyer_role`, `target_market`
+- contact-form `verification`: `form_found`, `linked_from_official_site`
 
 ## Acceptance invariant
 
-An `accepted` record must have non-empty `company_name`, `canonical_url`, `checked_at`, and at least one claim whose `evidence_url` was retrieved and whose `evidence_text` occurs in that page. Campaign-specific thresholds may require stronger evidence.
+An `accepted` record requires non-empty `company_name`, `canonical_url`, and `checked_at`, plus at least one independently verified claim of each required type. Each `evidence_text_original` must occur in the retrieved text for its exact `evidence_url`. Email and contact form fields are optional and must never be guessed.
