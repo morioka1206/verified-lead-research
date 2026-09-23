@@ -85,16 +85,36 @@ def finalize(crawls: list[dict[str, Any]], assessments: list[dict[str, Any]], ta
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--campaign", required=True, type=Path)
-    parser.add_argument("--crawls", required=True, type=Path)
-    parser.add_argument("--assessments", required=True, type=Path)
+    parser.add_argument(
+        "--crawls",
+        required=True,
+        action="append",
+        type=Path,
+        help="crawl JSON file; repeat this option to combine research batches",
+    )
+    parser.add_argument(
+        "--assessments",
+        required=True,
+        action="append",
+        type=Path,
+        help="assessment JSON file; repeat this option to combine research batches",
+    )
     parser.add_argument("--output-dir", required=True, type=Path)
     args = parser.parse_args()
     campaign = json.loads(args.campaign.read_text(encoding="utf-8"))
     campaign_errors = validate_campaign(campaign)
     if campaign_errors:
         raise ValueError("; ".join(campaign_errors))
-    crawls = json.loads(args.crawls.read_text(encoding="utf-8"))
-    assessments = json.loads(args.assessments.read_text(encoding="utf-8"))
+    crawls = [
+        item
+        for path in args.crawls
+        for item in json.loads(path.read_text(encoding="utf-8"))
+    ]
+    assessments = [
+        item
+        for path in args.assessments
+        for item in json.loads(path.read_text(encoding="utf-8"))
+    ]
     records, result = finalize(crawls, assessments, int(campaign.get("target_accepted", 30)))
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
