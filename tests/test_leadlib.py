@@ -27,6 +27,7 @@ HTML = """
     <a href="/products">Matcha products</a>
     <a href="/wholesale">Wholesale distribution</a>
     <a href="/contact">Contact us</a>
+    <form action="/newsletter"><input name="email"><button>Subscribe</button></form>
     <script>ignore@example.net</script>
   </body>
 </html>
@@ -43,7 +44,52 @@ class LeadLibraryTests(unittest.TestCase):
         self.assertEqual(parsed["company_name"], "Example Tea Imports")
         self.assertEqual(parsed["emails"], ["sales@example.com"])
         self.assertNotIn("ignore@example.net", parsed["emails"])
+        self.assertFalse(parsed["has_form"])
         self.assertEqual(len(leadlib.priority_links(parsed["links"], "https://example.com/")), 4)
+
+    def test_contact_form_is_not_confused_with_newsletter(self):
+        html = """
+        <form action="/newsletter"><input name="email"><button>Subscribe</button></form>
+        <form action="/contact"><input name="company"><textarea name="message"></textarea></form>
+        """
+        self.assertTrue(leadlib.parse_site(html, "https://example.com/contact")["has_form"])
+        newsletter = "<form action='/contact#contact_form'><input name='contact[email]'><button>Subscribe</button></form>"
+        self.assertFalse(leadlib.parse_site(newsletter, "https://example.com/")["has_form"])
+
+    def test_mailto_email_is_trimmed(self):
+        parsed = leadlib.parse_site(
+            "<a href='mailto:info@example.com%C2%A0'>Email</a>",
+            "https://example.com/",
+        )
+        self.assertEqual(parsed["emails"], [])
+        parsed = leadlib.parse_site(
+            "<a href='mailto:info@example.com\u00a0'>Email</a>",
+            "https://example.com/",
+        )
+        self.assertEqual(parsed["emails"], ["info@example.com"])
+
+    def test_duplicate_email_keeps_one_source(self):
+        page = {
+            "url": "https://example.com/",
+            "text": "Example wholesale matcha distributor in the United States.",
+            "emails": ["sales@example.com"],
+            "links": [],
+            "has_form": False,
+            "company_name": "Example",
+            "title": "Example",
+        }
+
+        def fake_fetch(url, **_kwargs):
+            parsed = dict(page, url=url)
+            return leadlib.FetchResult("", url, "static", 200), parsed
+
+        with patch.object(leadlib, "robots_allows", return_value=True), patch.object(
+            leadlib, "fetch_page", side_effect=fake_fetch
+        ), patch.object(leadlib, "priority_links", return_value=["https://example.com/about"]):
+            crawl = leadlib.crawl_company(
+                {"url": "https://example.com/"}, max_pages=2, delay_seconds=0
+            )
+        self.assertEqual(crawl["emails"], [{"email": "sales@example.com", "source_url": "https://example.com/"}])
 
     def test_private_urls_and_unsafe_schemes_are_rejected(self):
         for url in ("http://localhost/", "http://127.0.0.1/", "file:///etc/passwd"):

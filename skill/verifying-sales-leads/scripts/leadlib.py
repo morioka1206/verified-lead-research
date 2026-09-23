@@ -37,6 +37,17 @@ CONTACT_HINTS = (
     "contacto",
     "contatti",
 )
+FORM_CONTEXT_HINTS = (
+    "inquiry",
+    "enquiry",
+    "お問い合わせ",
+    "聯絡",
+    "联系",
+    "application",
+    "company",
+    "message",
+    "contact[body]",
+)
 LINK_GROUP_HINTS = {
     "about": ("about", "company", "who-we-are", "会社概要", "企業情報"),
     "products": ("product", "catalog", "matcha", "tea", "商品", "製品"),
@@ -220,10 +231,13 @@ class SiteHTMLParser(HTMLParser):
         self.mailto: list[str] = []
         self.site_name: str | None = None
         self.form_count = 0
+        self.contact_form_count = 0
         self._in_title = False
         self._hidden_depth = 0
         self._anchor_href: str | None = None
         self._anchor_text: list[str] = []
+        self._form_depth = 0
+        self._form_signals: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         tag = tag.lower()
@@ -244,6 +258,11 @@ class SiteHTMLParser(HTMLParser):
                 self.mailto.append(self._anchor_href[7:].split("?", 1)[0])
         elif tag == "form":
             self.form_count += 1
+            self._form_depth += 1
+            self._form_signals = [" ".join(f"{key}={value}" for key, value in values.items())]
+        elif self._form_depth and tag in {"input", "textarea", "select", "button", "label"}:
+            attributes = " ".join(f"{key}={value}" for key, value in values.items())
+            self._form_signals.append(f"{tag} {attributes}")
 
     def handle_endtag(self, tag: str) -> None:
         tag = tag.lower()
@@ -257,6 +276,12 @@ class SiteHTMLParser(HTMLParser):
             self.links.append((self._anchor_href, normalize_text(" ".join(self._anchor_text))))
             self._anchor_href = None
             self._anchor_text = []
+        elif tag == "form" and self._form_depth:
+            signals = normalize_text(" ".join(self._form_signals)).lower()
+            if "textarea" in signals and any(hint in signals for hint in FORM_CONTEXT_HINTS):
+                self.contact_form_count += 1
+            self._form_depth -= 1
+            self._form_signals = []
 
     def handle_data(self, data: str) -> None:
         value = normalize_text(data)
@@ -267,6 +292,8 @@ class SiteHTMLParser(HTMLParser):
         if self._hidden_depth:
             return
         self.text_blocks.append(value)
+        if self._form_depth:
+            self._form_signals.append(value)
         if self._anchor_href is not None:
             self._anchor_text.append(value)
 
@@ -277,7 +304,7 @@ def parse_site(html_text: str, base_url: str) -> dict[str, Any]:
     text = normalize_text(" ".join(parser.text_blocks))
     title = normalize_text(" ".join(parser.title_parts))
     company_name = parser.site_name or re.split(r"\s+[|–—]\s+|\s+-\s+", title, maxsplit=1)[0] or None
-    emails = {email.lower() for email in parser.mailto if EMAIL_RE.fullmatch(email.strip())}
+    emails = {email.strip().lower() for email in parser.mailto if EMAIL_RE.fullmatch(email.strip())}
     emails.update(match.lower() for match in EMAIL_RE.findall(text))
 
     links = []
@@ -295,7 +322,7 @@ def parse_site(html_text: str, base_url: str) -> dict[str, Any]:
         "text_blocks": parser.text_blocks,
         "emails": sorted(emails),
         "links": links,
-        "has_form": parser.form_count > 0,
+        "has_form": parser.contact_form_count > 0,
     }
 
 
@@ -465,12 +492,15 @@ def crawl_company(
                 queue.append(canonical)
 
     emails = []
+    seen_emails: set[str] = set()
     contact_forms = []
     for page in pages:
         for email in page["emails"]:
+            if email in seen_emails:
+                continue
+            seen_emails.add(email)
             item = {"email": email, "source_url": page["url"]}
-            if item not in emails:
-                emails.append(item)
+            emails.append(item)
         if page["has_form"]:
             contact_forms.append({"url": page["url"], "verification": "form_found"})
     for url in dict.fromkeys(external_contact_urls):
