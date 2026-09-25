@@ -31,10 +31,16 @@ class BatchRunTests(unittest.TestCase):
         }
 
     def test_campaign_limits_depend_on_mode(self):
+        standard_at_limit = self.campaign()
+        standard_at_limit["research_mode"] = "standard"
+        standard_at_limit["target_accepted"] = 50
+        standard_at_limit["max_candidates"] = 100
+        self.assertEqual(leadlib.validate_campaign(standard_at_limit), [])
+
         standard = self.campaign()
         standard["research_mode"] = "standard"
-        standard["target_accepted"] = 31
-        self.assertIn("target_accepted must be an integer from 1 to 30", leadlib.validate_campaign(standard))
+        standard["target_accepted"] = 51
+        self.assertIn("target_accepted must be an integer from 1 to 50", leadlib.validate_campaign(standard))
 
         large = self.campaign()
         large["target_accepted"] = 500

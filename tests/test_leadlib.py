@@ -192,7 +192,7 @@ class LeadLibraryTests(unittest.TestCase):
             "product": {"name": "matcha", "keywords": ["matcha"]},
             "market": {"name": "US", "keywords": ["USA"]},
             "buyer_types": [{"name": "importer", "keywords": ["importer"]}],
-            "target_accepted": 31,
+            "target_accepted": 51,
             "max_candidates": 101,
             "max_pages_per_company": 6,
         }

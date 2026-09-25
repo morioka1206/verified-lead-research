@@ -1,6 +1,6 @@
 # Batch research mode
 
-Read this reference when the user requests more than 30 accepted companies or explicitly asks for resumable, multi-batch research.
+Read this reference when the user requests more than 50 accepted companies or explicitly asks for resumable, multi-batch research.
 
 ## What stays unchanged
 

@@ -27,7 +27,7 @@ Use this structure when campaign settings need to be saved or reused.
   "excluded_types": [],
   "excluded_companies": [],
   "contact_preference": "public_email_then_optional_form",
-  "target_accepted": 30,
+  "target_accepted": 50,
   "max_candidates": 100,
   "batch_size": 50,
   "max_pages_per_company": 5
@@ -46,7 +46,7 @@ Suggested `market.activity_evidence` values are:
 
 `research_mode` controls only how work is divided and persisted:
 
-- `standard`: up to 30 accepted companies and 100 checked candidates.
+- `standard`: up to 50 accepted companies and 100 checked candidates.
 - `batch`: up to 1,000 accepted companies and 5,000 checked candidates. `batch_size` defaults to 50 and may be 1–100.
 
 `max_candidates` must be at least `target_accepted`. For a large campaign, use five times the accepted target as a starting ceiling when the likely acceptance rate is unknown. `max_pages_per_company` must not exceed 5 in either mode. Campaign fields guide discovery and evaluation; they never lower the three-evidence acceptance gate.

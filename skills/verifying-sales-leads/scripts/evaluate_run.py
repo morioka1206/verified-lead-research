@@ -12,7 +12,7 @@ from pathlib import Path
 ALLOWED = {"正しい", "間違い"}
 
 
-def evaluate(path: Path, expected: int = 30, threshold: float = 0.9) -> dict[str, object]:
+def evaluate(path: Path, expected: int = 50, threshold: float = 0.9) -> dict[str, object]:
     with path.open(encoding="utf-8-sig", newline="") as handle:
         rows = list(csv.DictReader(handle))
     if len(rows) != expected:
@@ -35,7 +35,7 @@ def evaluate(path: Path, expected: int = 30, threshold: float = 0.9) -> dict[str
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("csv_path", type=Path)
-    parser.add_argument("--expected", type=int, default=30)
+    parser.add_argument("--expected", type=int, default=50)
     parser.add_argument("--threshold", type=float, default=0.9)
     args = parser.parse_args()
     result = evaluate(args.csv_path, args.expected, args.threshold)

@@ -97,18 +97,18 @@ def validate_campaign(campaign: Any) -> list[str]:
     if research_mode not in {"standard", "batch"}:
         errors.append("research_mode must be standard or batch")
     maximums = {
-        "standard": {"target_accepted": 30, "max_candidates": 100},
+        "standard": {"target_accepted": 50, "max_candidates": 100},
         "batch": {"target_accepted": 1000, "max_candidates": 5000},
-    }.get(research_mode, {"target_accepted": 30, "max_candidates": 100})
+    }.get(research_mode, {"target_accepted": 50, "max_candidates": 100})
     for field, default, maximum in (
-        ("target_accepted", 30, maximums["target_accepted"]),
+        ("target_accepted", 50, maximums["target_accepted"]),
         ("max_candidates", 100, maximums["max_candidates"]),
         ("max_pages_per_company", 5, 5),
     ):
         value = campaign.get(field, default)
         if not isinstance(value, int) or not 1 <= value <= maximum:
             errors.append(f"{field} must be an integer from 1 to {maximum}")
-    target = campaign.get("target_accepted", 30)
+    target = campaign.get("target_accepted", 50)
     maximum_candidates = campaign.get("max_candidates", 100)
     if isinstance(target, int) and isinstance(maximum_candidates, int) and maximum_candidates < target:
         errors.append("max_candidates must be greater than or equal to target_accepted")

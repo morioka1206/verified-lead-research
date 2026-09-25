@@ -63,7 +63,7 @@ class OutputTests(unittest.TestCase):
                             "human_notes": "",
                         }
                     )
-            result = evaluate_run.evaluate(path)
+            result = evaluate_run.evaluate(path, expected=30)
             self.assertEqual(result["correct"], 27)
             self.assertEqual(result["precision"], 0.9)
             self.assertTrue(result["passed"])
@@ -76,7 +76,7 @@ class OutputTests(unittest.TestCase):
                 writer.writeheader()
                 writer.writerows(rows)
             with self.assertRaises(ValueError):
-                evaluate_run.evaluate(path)
+                evaluate_run.evaluate(path, expected=30)
 
 
 if __name__ == "__main__":

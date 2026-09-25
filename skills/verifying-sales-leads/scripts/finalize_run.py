@@ -131,7 +131,7 @@ def main() -> int:
         for path in args.assessments
         for item in json.loads(path.read_text(encoding="utf-8"))
     ]
-    records, result = finalize(crawls, assessments, int(campaign.get("target_accepted", 30)))
+    records, result = finalize(crawls, assessments, int(campaign.get("target_accepted", 50)))
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     (args.output_dir / "audit.json").write_text(json.dumps(records, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
