@@ -35,7 +35,9 @@
 
 分からない会社は無理に合格にせず、`review` または `blocked` にします。会社名、URL、メールアドレスを想像で補いません。
 
-## 3分インストール（Mac）
+## インストール
+
+### Mac（かんたん）
 
 ### 先に用意するもの
 
@@ -56,6 +58,23 @@ Pythonが入っているか分からなくても、インストーラーが確�
 
 Macに止められた場合は、`INSTALL.command` を右クリックして「開く」を選び、もう一度「開く」を選んでください。
 
+### Windows + Claude Code
+
+Windowsでは、PowerShellからClaude Code Pluginとして起動します。Python環境とChromiumを最初の1回だけ準備します。
+
+詳しい画面ごとの手順は [Windows版Claude Codeセットアップ](docs/windows-claude-code.md) を参照してください。基本のコマンドは次のとおりです。
+
+```powershell
+cd "C:\保存した場所\verified-lead-research"
+py -3 -m venv .venv
+$env:PLAYWRIGHT_BROWSERS_PATH = "$PWD\.playwright-browsers"
+.\.venv\Scripts\python.exe -m pip install --requirement .\skills\verifying-sales-leads\requirements.txt
+.\.venv\Scripts\python.exe -m playwright install chromium
+claude --plugin-dir .
+```
+
+Claude Codeが開いたら、`/verified-lead-research:verifying-sales-leads` を選び、売りたい商材と対象国を伝えます。
+
 ## 最初の使い方
 
 新しい会話で、たとえば次のように依頼します。
@@ -74,7 +93,7 @@ Skillがいきなり検索を始めることはありません。選択式の質
 ## 大事な注意
 
 - 公式サイトで確認できる公開情報だけを扱います。
-- 問い合わせフォームは、通常の確認中に見つかった場合だけ保存します。
+- 問い合わせフォームは補助情報です。通常の確認中にフォームだと明確に分かった場合だけ保存し、見つからなくても会社の合否には影響しません。
 - フォーム送信、営業メール送信、CAPTCHA回避は行いません。
 - 公式サイトを確認できても、法人登記まで証明したことにはなりません。
 - 対象サイトや通信状態によって、30社に届かないことがあります。その場合も合格条件はゆるめません。
@@ -92,6 +111,15 @@ Skillがいきなり検索を始めることはありません。選択式の質
 ### インストールをやり直したい
 
 同じ `INSTALL.command` をもう一度開けば、安全に更新されます。自分で作った同名フォルダがある場合は、上書きせず停止します。
+
+### Windowsでブラウザが動くか確認したい
+
+PowerShellでリポジトリへ移動し、次を実行します。画面を出さずにChromiumを起動し、JavaScriptで表示される文章を取得できれば `OK` と表示されます。
+
+```powershell
+$env:PLAYWRIGHT_BROWSERS_PATH = "$PWD\.playwright-browsers"
+.\.venv\Scripts\python.exe -m unittest tests\test_playwright_dynamic.py -v
+```
 
 ## 手動インストール（詳しい人向け）
 
@@ -111,6 +139,13 @@ claude --plugin-dir /受け取った場所/verified-lead-research
 
 ```bash
 .venv/bin/python -m unittest discover -s tests -v
+```
+
+Windowsでの確認：
+
+```powershell
+$env:PLAYWRIGHT_BROWSERS_PATH = "$PWD\.playwright-browsers"
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
 調査結果は `runs/<日時>/` に保存され、Gitには追加されません。設計判断は `docs/`、現在地は `STATUS.md` にあります。

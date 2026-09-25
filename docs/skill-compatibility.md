@@ -26,6 +26,12 @@ CodexとClaudeはいずれも、YAML frontmatterを持つ `SKILL.md` と、必�
 
 Codexで先にテストし、その後Claude Codeで同じキャンペーン、クロール、評価スキーマを確認します。クライアントのWeb検索結果は完全一致を要求しません。
 
+## 実機確認
+
+2026年9月25日にWindows版Claude Codeで、Pluginの読み込み、選択式ヒアリング、和牛卸候補の調査、日本語CSVと監査JSONの出力を確認しました。監査JSONでは20候補を `accepted`、`review`、`rejected`、`blocked` に分け、合格会社に商材・会社の役割・対象市場の3証拠と原文が保存されていました。
+
+同じWindows環境でPlaywright 1.63.0のChromiumをヘッドレス起動し、JavaScriptで生成した文章を取得する単体テストが合格しました。Windowsの詳しい準備方法は [windows-claude-code.md](windows-claude-code.md) に記載します。
+
 ## 他の人へ渡すPlugin版
 
 現在のリポジトリには共通Skillに加え、CodexとClaude Code向けの配布用Pluginマニフェストがあります。調査ロジックは複製せず、次の外箱を同じGitリポジトリへ置きます。

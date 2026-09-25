@@ -235,8 +235,8 @@
       <section id="install">
         <p class="kicker">SETUP</p>
         <h2>はじめてのインストール</h2>
-        <p>Mac向けです。最初だけ必要なブラウザ部品をダウンロードするため、通信環境により3〜10分ほどかかります。</p>
-        <div class="callout"><strong>先に必要なもの</strong>Mac、インターネット、CodexまたはClaude Code、Python 3。CodexとClaude Codeは、使いたい方だけで大丈夫です。</div>
+        <p>Macはダブルクリック、WindowsはPowerShellから準備できます。最初だけ必要なブラウザ部品をダウンロードするため、通信環境により3〜10分ほどかかります。</p>
+        <div class="callout"><strong>先に必要なもの</strong>MacまたはWindows、インターネット、CodexまたはClaude Code、Python 3。CodexとClaude Codeは、使いたい方だけで大丈夫です。</div>
         <div class="steps">
           <div class="step"><h3>受け取ったフォルダを開く</h3><p>`verified-lead-research` というフォルダです。ZIPで受け取った場合は、まずダブルクリックして展開します。</p></div>
           <div class="step"><h3>`INSTALL.command` をダブルクリック</h3><p>黒い画面が開きます。英語が表示されても、閉じずにそのまま待ってください。</p></div>
@@ -245,6 +245,15 @@
           <div class="step"><h3>新しい会話で依頼する</h3><p>下の依頼文をコピーして試します。Skillが質問を始めれば成功です。</p></div>
         </div>
         <div class="callout yellow"><strong>Macに止められたら</strong>`INSTALL.command` を右クリック →「開く」→ もう一度「開く」。知らない配布元のファイルを開く警告が出た時だけ、この操作をします。</div>
+
+        <details><summary>WindowsでClaude Codeを使いたい</summary><div><p>ZIPを展開するかGitHubから取得し、`verified-lead-research` フォルダでPowerShellを開きます。次を上から順に実行します。</p><div class="codebox"><button class="copy" type="button">コピー</button><pre>py -3 -m venv .venv
+$env:PLAYWRIGHT_BROWSERS_PATH = "$PWD\.playwright-browsers"
+.\.venv\Scripts\python.exe -m pip install --requirement .\skills\verifying-sales-leads\requirements.txt
+.\.venv\Scripts\python.exe -m playwright install chromium
+claude --plugin-dir .</pre></div><p>Claude Codeで <code>/verified-lead-research:verifying-sales-leads</code> を選びます。さらに詳しい説明は <a href="docs/windows-claude-code.md">Windows版セットアップ手順</a> にあります。</p></div></details>
+
+        <details><summary>Windowsでブラウザが動くか確認したい</summary><div><div class="codebox"><button class="copy" type="button">コピー</button><pre>$env:PLAYWRIGHT_BROWSERS_PATH = "$PWD\.playwright-browsers"
+.\.venv\Scripts\python.exe -m unittest tests\test_playwright_dynamic.py -v</pre></div>最後に <code>OK</code> と表示されれば合格です。ブラウザは裏側で動くため、画面が開かないのが正常です。</div></details>
 
         <div class="tabs">
           <div class="tablist" role="tablist" aria-label="利用環境">
@@ -298,10 +307,10 @@ python3 skills/verifying-sales-leads/scripts/bootstrap.py
         <details><summary>インストール後もSkillが始まりません</summary><div>CodexまたはClaude Codeを完全に終了し、開き直してから新しい会話を作ってください。古い会話では新しいSkillが読み込まれないことがあります。</div></details>
         <details><summary>アップデートはどうしますか？</summary><div>新しい配布フォルダへ入れ替え、もう一度 `INSTALL.command` を開きます。このインストーラーが以前に置いたファイルだけを更新します。</div></details>
         <details><summary>ChatGPTやClaudeのAPI契約は必要ですか？</summary><div>このSkillをCodexまたはClaude Codeの会話内で使う段階では、別のAI API契約は不要です。将来、独立したWebアプリとして自動運転する場合は別途実行基盤が必要です。</div></details>
-        <details><summary>問い合わせフォームが空欄でも大丈夫？</summary><div>大丈夫です。フォーム探索は補助機能です。会社の合否は、商材・会社の役割・対象市場の活動という3種類の証拠で決まります。</div></details>
+        <details><summary>問い合わせフォームが空欄でも大丈夫？</summary><div>大丈夫です。フォーム探索は補助機能です。フォームだと明確に確認できた時だけ保存し、分からない場合は空欄にします。会社の合否は、商材・会社の役割・対象市場の活動という3種類の証拠で決まります。</div></details>
       </section>
 
-      <footer>証拠付き営業リスト · 配布版 v1 · 2026-09-24</footer>
+      <footer>証拠付き営業リスト · 配布版 v1 · 2026-09-25</footer>
     </main>
   </div>
 
