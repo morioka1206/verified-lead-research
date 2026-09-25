@@ -5,6 +5,7 @@ Use this structure when campaign settings need to be saved or reused.
 ```json
 {
   "id": "campaign-id",
+  "research_mode": "standard",
   "product": {
     "name": "",
     "description": "",
@@ -28,6 +29,7 @@ Use this structure when campaign settings need to be saved or reused.
   "contact_preference": "public_email_then_optional_form",
   "target_accepted": 30,
   "max_candidates": 100,
+  "batch_size": 50,
   "max_pages_per_company": 5
 }
 ```
@@ -42,4 +44,9 @@ Suggested `market.activity_evidence` values are:
 
 `secondary_buyer_types` are allowed only when the user accepts adjacent roles. `contact_preference` guides collection but never replaces the three-evidence acceptance gate.
 
-`target_accepted` must not exceed 30 in v1, `max_candidates` must not exceed 100, and `max_pages_per_company` must not exceed 5. Campaign fields guide discovery and evaluation; they never lower the three-evidence acceptance gate.
+`research_mode` controls only how work is divided and persisted:
+
+- `standard`: up to 30 accepted companies and 100 checked candidates.
+- `batch`: up to 1,000 accepted companies and 5,000 checked candidates. `batch_size` defaults to 50 and may be 1–100.
+
+`max_candidates` must be at least `target_accepted`. For a large campaign, use five times the accepted target as a starting ceiling when the likely acceptance rate is unknown. `max_pages_per_company` must not exceed 5 in either mode. Campaign fields guide discovery and evaluation; they never lower the three-evidence acceptance gate.

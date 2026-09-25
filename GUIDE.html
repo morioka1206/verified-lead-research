@@ -162,7 +162,7 @@
   <header class="appbar">
     <div class="appbar-inner">
       <a class="brand" href="#top"><span class="brand-mark">✓</span><span>証拠付き営業リスト</span></a>
-      <span class="version">配布版 v1 · Mac</span>
+      <span class="version">配布版 v1.1 · Mac / Windows</span>
     </div>
   </header>
 
@@ -175,6 +175,7 @@
         <a href="#difference">なぜ信頼できる？</a>
         <a href="#install">インストール</a>
         <a href="#start">最初の使い方</a>
+        <a href="#scale">大量調査</a>
         <a href="#output">受け取るもの</a>
         <a href="#limits">できないこと</a>
         <a href="#faq">困ったとき</a>
@@ -186,7 +187,7 @@
         <p class="kicker">VERIFIED LEAD RESEARCH</p>
         <h1>公式サイトの証拠付きで、営業候補を探すSkill</h1>
         <p class="lede">売りたい商材、対象国、会いたい企業を伝えると、候補企業の公式サイトを確認し、なぜ候補に入れたのかまで残します。会社名やURLをAIの想像だけで作りません。</p>
-        <div class="meta-row"><span class="pill">Codex対応</span><span class="pill">Claude Code対応</span><span class="pill">AI API契約不要</span><span class="pill">営業送信なし</span></div>
+        <div class="meta-row"><span class="pill">Codex対応</span><span class="pill">Claude Code対応</span><span class="pill">最大1,000社</span><span class="pill">AI API契約不要</span><span class="pill">営業送信なし</span></div>
         <div class="jump-row"><a class="button" href="#install">インストールする</a><a class="button secondary" href="#difference">普通のAIとの違い</a></div>
         <div class="callout yellow"><strong>ひとことで言うと</strong>「会社をたくさん挙げるAI」ではなく、「会社を一社ずつ確かめるAI」です。</div>
       </section>
@@ -201,6 +202,7 @@
           <article class="feature"><div class="feature-icon">残</div><h3>証拠を一緒に保存</h3><p>会社名とURLだけでなく、公式サイトの原文、掲載ページ、確認日時を残します。</p></article>
           <article class="feature"><div class="feature-icon">連</div><h3>公開連絡先を収集</h3><p>公開メールだけを取得。問い合わせフォームは普通に見つかった時だけ保存します。</p></article>
           <article class="feature"><div class="feature-icon">分</div><h3>不確かな会社を分離</h3><p>証拠不足、対象外、取得不能を分け、無理に「合格」へ入れません。</p></article>
+          <article class="feature"><div class="feature-icon">続</div><h3>大量調査を途中から再開</h3><p>50候補ずつ記録し、停止しても重複なしで続きから調査できます。</p></article>
         </div>
         <div class="callout green"><strong>商材例</strong>食品、飲料、機械、素材、化粧品、日用品、法人向けサービス。B2Bの相手を公式サイトで確認できる商材に向いています。</div>
       </section>
@@ -264,7 +266,7 @@ claude --plugin-dir .</pre></div><p>Claude Codeで <code>/verified-lead-research
             <p>Codexを完全に終了して開き直し、新しいタスクを作ります。特別なコマンドは不要です。</p>
           </div>
           <div class="tabpanel" role="tabpanel" id="claude-panel" aria-labelledby="claude-tab" hidden>
-            <p>Claude Codeを終了して開き直します。Skillを直接呼ぶ場合は <code>/verifying-sales-leads</code> と入力できます。</p>
+            <p>Claude Codeを終了して開き直します。Pluginとして開いた場合は <code>/verified-lead-research:verifying-sales-leads</code>、個人用Skillとして入れた場合は <code>/verifying-sales-leads</code> と入力できます。</p>
           </div>
         </div>
 
@@ -286,11 +288,37 @@ python3 skills/verifying-sales-leads/scripts/bootstrap.py
         <ul><li>和牛をヨーロッパへ販売するため、食肉輸入会社を探す</li><li>包装機械を東南アジアへ販売するため、販売代理店を探す</li><li>日本の化粧品原料を韓国へ販売するため、メーカーと卸会社を探す</li><li>法人向けサービスの現地パートナー候補を探す</li></ul>
       </section>
 
+      <section id="scale">
+        <p class="kicker">LARGE RESEARCH</p>
+        <h2>500社でも、50候補ずつ安全に進める</h2>
+        <p>大きな依頼を一度に処理せず、小さなまとまりに分けます。各回が終わるたびにデータベースへ保存するので、PCや会話を閉じても続きから再開できます。</p>
+        <table class="comparison">
+          <thead><tr><th>モード</th><th>標準調査</th><th>大量調査</th></tr></thead>
+          <tbody>
+            <tr><td>合格目標</td><td>5〜30社</td><td class="good">31〜1,000社</td></tr>
+            <tr><td>1回の確認数</td><td>必要数を順番に確認</td><td class="good">初期値は50候補</td></tr>
+            <tr><td>候補の上限</td><td>最大100社</td><td>最大5,000社</td></tr>
+            <tr><td>途中保存</td><td>実行結果を保存</td><td class="good">SQLiteへ毎回保存し再開可能</td></tr>
+          </tbody>
+        </table>
+        <div class="pipeline" aria-label="大量調査の流れ">
+          <div class="pipe"><b>01</b><strong>候補を追加</strong><span>検索で見つけた公式URL</span></div>
+          <div class="pipe"><b>02</b><strong>50候補を確認</strong><span>一社ずつ同じ合格条件</span></div>
+          <div class="pipe"><b>03</b><strong>途中保存</strong><span>判定と証拠をDBへ記録</span></div>
+          <div class="pipe"><b>04</b><strong>重複を除く</strong><span>同じ公式ドメインは再調査しない</span></div>
+          <div class="pipe"><b>05</b><strong>次の50候補</strong><span>必要件数まで繰り返す</span></div>
+        </div>
+        <div class="callout green"><strong>500社を集める例</strong>候補上限は2,500社を目安に設定します。500社に届いた時点、または候補上限を確認した時点で終了します。</div>
+        <div class="callout yellow"><strong>品質ルールは同じ</strong>大量調査でも、商材・会社の役割・対象市場の活動という3種類の証拠がそろった会社だけを合格にします。数を増やすために条件はゆるめません。</div>
+      </section>
+
       <section id="output">
         <h2>最後に受け取るもの</h2>
         <div class="output">
           <article class="output-card"><h3>leads.csv</h3><p>営業担当が見る日本語の表。</p><ul><li>会社名と公式URL</li><li>公開メール</li><li>短い会社概要</li><li>証拠URL</li><li>人の確認欄</li></ul></article>
           <article class="output-card"><h3>audit.json</h3><p>あとから判定を確かめる記録。</p><ul><li>全候補と判定</li><li>公式サイトの原文</li><li>証拠ページ</li><li>確認日時</li><li>不確かな点</li></ul></article>
+          <article class="output-card"><h3>research.sqlite3</h3><p>大量調査の途中経過を覚える台帳。</p><ul><li>調査済み・未調査の候補</li><li>バッチ番号と進捗</li><li>重複を防ぐ公式ドメイン</li><li>通常は開かなくてよい内部ファイル</li></ul></article>
+          <article class="output-card"><h3>summary.json</h3><p>いまどこまで進んだかを示す記録。</p><ul><li>確認済み候補数</li><li>合格会社数</li><li>残りの目標数</li><li>次にすること</li></ul></article>
         </div>
         <p style="margin-top:18px">最初の抹茶・アメリカ実験では、37候補を確認し、3証拠がそろった30社を出力しました。利用者が30社すべての公式URLを確認し、30社すべてを正しいと判定しました。</p>
         <div class="result-line"><div><strong>37</strong><span>公式サイト確認</span></div><div><strong>30</strong><span>3証拠で合格</span></div><div><strong>30 / 30</strong><span>人の確認で正しい</span></div></div>
@@ -299,7 +327,7 @@ python3 skills/verifying-sales-leads/scripts/bootstrap.py
       <section id="limits">
         <h2>このSkillがしないこと</h2>
         <ul><li>会社名、URL、メールアドレスを想像して埋める</li><li>問い合わせフォームや営業メールを送信する</li><li>CAPTCHAやBot対策を回避する</li><li>問い合わせフォームだけを探すため、無制限にクリックする</li><li>公式サイトだけを根拠に、法人登記済みだと断定する</li></ul>
-        <div class="callout red"><strong>30社に届かないことがあります</strong>証拠が足りない時は、数を埋めるために合格条件をゆるめません。不足数と理由を報告します。</div>
+        <div class="callout red"><strong>目標件数に届かないことがあります</strong>証拠が足りない時は、数を埋めるために合格条件をゆるめません。不足数と理由を報告します。</div>
       </section>
 
       <section id="faq">
@@ -310,7 +338,7 @@ python3 skills/verifying-sales-leads/scripts/bootstrap.py
         <details><summary>問い合わせフォームが空欄でも大丈夫？</summary><div>大丈夫です。フォーム探索は補助機能です。フォームだと明確に確認できた時だけ保存し、分からない場合は空欄にします。会社の合否は、商材・会社の役割・対象市場の活動という3種類の証拠で決まります。</div></details>
       </section>
 
-      <footer>証拠付き営業リスト · 配布版 v1 · 2026-09-25</footer>
+      <footer>証拠付き営業リスト · 配布版 v1.1 · 2026-09-25</footer>
     </main>
   </div>
 

@@ -1,5 +1,6 @@
 {
   "id": "matcha-us-importers",
+  "research_mode": "standard",
   "product": {
     "name": "抹茶",
     "description": "日本産抹茶を業務用に輸出する",
@@ -37,5 +38,6 @@
   "contact_preference": "public_email_then_optional_form",
   "target_accepted": 30,
   "max_candidates": 100,
+  "batch_size": 50,
   "max_pages_per_company": 5
 }

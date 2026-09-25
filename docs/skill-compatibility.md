@@ -32,6 +32,8 @@ Codexで先にテストし、その後Claude Codeで同じキャンペーン、�
 
 同じWindows環境でPlaywright 1.63.0のChromiumをヘッドレス起動し、JavaScriptで生成した文章を取得する単体テストが合格しました。Windowsの詳しい準備方法は [windows-claude-code.md](windows-claude-code.md) に記載します。
 
+配布版v1.1では、31社以上の依頼を50候補ずつ進める大量調査モードを追加しました。途中経過はPython標準機能のSQLiteへ保存するため、追加のデータベース製品は不要です。CodexとClaude Code、macOSとWindowsで同じキャンペーン設定と保存形式を使います。500社の依頼では候補上限2,500社を初期提案とし、公式ドメインの重複を除きながら再開できます。
+
 ## 他の人へ渡すPlugin版
 
 現在のリポジトリには共通Skillに加え、CodexとClaude Code向けの配布用Pluginマニフェストがあります。調査ロジックは複製せず、次の外箱を同じGitリポジトリへ置きます。
