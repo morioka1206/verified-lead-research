@@ -162,7 +162,7 @@
   <header class="appbar">
     <div class="appbar-inner">
       <a class="brand" href="#top"><span class="brand-mark">✓</span><span>証拠付き営業リスト</span></a>
-      <span class="version">配布版 v1.1.1 · Mac / Windows</span>
+      <span class="version">配布版 v1.1.2 · Mac / Windows</span>
     </div>
   </header>
 
@@ -214,7 +214,7 @@
           <thead><tr><th>確認点</th><th>普通のAIリスト</th><th>このSkill</th></tr></thead>
           <tbody>
             <tr><td>会社名・URL</td><td class="risk">AIの記憶や推測が混ざることがある</td><td class="good">Webで候補を見つけ、公式サイトを取得</td></tr>
-            <tr><td>営業先との適合</td><td>「それらしい会社」を文章から判断</td><td class="good">3種類の公式サイト証拠を必須にする</td></tr>
+            <tr><td>営業先との適合</td><td>「それらしい会社」を文章から判断</td><td class="good">AIの対象判定と3種類の公式サイト証拠を両方必須にする</td></tr>
             <tr><td>メール</td><td class="risk">命名規則から推測する場合がある</td><td class="good">ページに公開されたメールだけ</td></tr>
             <tr><td>根拠</td><td>説明文だけで、あとから確認しにくい</td><td class="good">原文・URL・確認日時を保存</td></tr>
             <tr><td>分からない時</td><td class="risk">空欄を埋めようとすることがある</td><td class="good">確認待ち・対象外・取得不能に分ける</td></tr>
@@ -230,8 +230,9 @@
           <div class="pipe"><b>05</b><strong>人が最終確認</strong><span>正しい・間違いを記録</span></div>
         </div>
 
-        <p>企業が合格するには、次の3つがすべて必要です。</p>
+        <p>企業が合格するには、AIが競合・対象外ではないと判断したうえで、次の3つがすべて必要です。</p>
         <div class="criteria"><div class="criterion"><strong>商材との関係</strong><br>扱う・使う・販売する</div><div class="plus">＋</div><div class="criterion"><strong>会社の役割</strong><br>輸入・卸・購入など</div><div class="plus">＋</div><div class="criterion"><strong>対象市場の活動</strong><br>販売・配送・顧客・拠点</div></div>
+        <div class="callout yellow"><strong>自動で格上げしない</strong>AIが競合や対象外として <code>review</code>／<code>rejected</code> にした会社は、3つの証拠があっても合格へ変更しません。プログラムは誤採用を防ぐために判定を下げることだけができます。</div>
       </section>
 
       <section id="install">
@@ -309,7 +310,7 @@ python3 skills/verifying-sales-leads/scripts/bootstrap.py
           <div class="pipe"><b>05</b><strong>次の50候補</strong><span>必要件数まで繰り返す</span></div>
         </div>
         <div class="callout green"><strong>500社を集める例</strong>候補上限は2,500社を目安に設定します。500社に届いた時点、または候補上限を確認した時点で終了します。</div>
-        <div class="callout yellow"><strong>品質ルールは同じ</strong>大量調査でも、商材・会社の役割・対象市場の活動という3種類の証拠がそろった会社だけを合格にします。数を増やすために条件はゆるめません。</div>
+        <div class="callout yellow"><strong>品質ルールは同じ</strong>大量調査でも、AIの対象判定と、商材・会社の役割・対象市場の活動という3種類の証拠が両方そろった会社だけを合格にします。数を増やすために条件はゆるめません。</div>
       </section>
 
       <section id="output">
@@ -335,10 +336,10 @@ python3 skills/verifying-sales-leads/scripts/bootstrap.py
         <details><summary>インストール後もSkillが始まりません</summary><div>CodexまたはClaude Codeを完全に終了し、開き直してから新しい会話を作ってください。古い会話では新しいSkillが読み込まれないことがあります。</div></details>
         <details><summary>アップデートはどうしますか？</summary><div>新しい配布フォルダへ入れ替え、もう一度 `INSTALL.command` を開きます。このインストーラーが以前に置いたファイルだけを更新します。</div></details>
         <details><summary>ChatGPTやClaudeのAPI契約は必要ですか？</summary><div>このSkillをCodexまたはClaude Codeの会話内で使う段階では、別のAI API契約は不要です。将来、独立したWebアプリとして自動運転する場合は別途実行基盤が必要です。</div></details>
-        <details><summary>問い合わせフォームが空欄でも大丈夫？</summary><div>大丈夫です。フォーム探索は補助機能です。フォームだと明確に確認できた時だけ保存し、分からない場合は空欄にします。会社の合否は、商材・会社の役割・対象市場の活動という3種類の証拠で決まります。</div></details>
+        <details><summary>問い合わせフォームが空欄でも大丈夫？</summary><div>大丈夫です。フォーム探索は補助機能です。フォームだと明確に確認できた時だけ保存し、分からない場合は空欄にします。会社の合否は、AIの対象適合判定と、商材・会社の役割・対象市場の活動という3種類の証拠で決まります。</div></details>
       </section>
 
-      <footer>証拠付き営業リスト · 配布版 v1.1.1 · 2026-09-25</footer>
+      <footer>証拠付き営業リスト · 配布版 v1.1.2 · 2026-09-25</footer>
     </main>
   </div>
 

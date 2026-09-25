@@ -1,4 +1,5 @@
 from io import BytesIO
+from http.client import HTTPException
 from pathlib import Path
 import socket
 import sys
@@ -39,6 +40,15 @@ def public_resolver(*_args):
 
 
 class LeadLibraryTests(unittest.TestCase):
+    def test_canonicalize_url_encodes_spaces_and_unicode(self):
+        canonical = leadlib.canonicalize_url(
+            "https://example.com/menu/抹茶 latte?category=green tea&next=/a b"
+        )
+        self.assertEqual(
+            canonical,
+            "https://example.com/menu/%E6%8A%B9%E8%8C%B6%20latte?category=green%20tea&next=/a%20b",
+        )
+
     def test_parse_extracts_public_contact_data(self):
         parsed = leadlib.parse_site(HTML, "https://example.com/")
         self.assertEqual(parsed["company_name"], "Example Tea Imports")
@@ -130,6 +140,16 @@ class LeadLibraryTests(unittest.TestCase):
                 {"url": "https://example.com/"}, delay_seconds=-1
             )
 
+    def test_http_exception_blocks_only_the_current_company(self):
+        with patch.object(leadlib, "robots_allows", return_value=True), patch.object(
+            leadlib, "fetch_page", side_effect=HTTPException("invalid URL")
+        ):
+            crawl = leadlib.crawl_company(
+                {"url": "https://example.com/menu"}, delay_seconds=0
+            )
+        self.assertEqual(crawl["site_status"], "blocked")
+        self.assertIn("invalid URL", crawl["errors"][0]["reason"])
+
     def test_all_three_claim_types_are_required(self):
         page = {
             "url": "https://example.com/about",
@@ -170,6 +190,13 @@ class LeadLibraryTests(unittest.TestCase):
             }
         ]
         self.assertEqual(leadlib.finalize_record(crawl, assessment)["verification_status"], "accepted")
+
+        for recommendation in ("review", "rejected"):
+            with self.subTest(recommendation=recommendation):
+                assessment["recommendation"] = recommendation
+                assessment["rejection_reason"] = "競合または対象外"
+                record = leadlib.finalize_record(crawl, assessment)
+                self.assertEqual(record["verification_status"], recommendation)
 
     def test_invented_evidence_is_rejected(self):
         pages = [{"url": "https://example.com/", "text": "Real text only."}]

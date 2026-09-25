@@ -30,6 +30,7 @@ Produce one record per canonical company domain.
       "verification": "form_found"
     }
   ],
+  "assessment_recommendation": "review",
   "verification_status": "review",
   "rejection_reason": null,
   "uncertainties": [],
@@ -49,4 +50,4 @@ Produce one record per canonical company domain.
 
 ## Acceptance invariant
 
-An `accepted` record requires non-empty `company_name`, `canonical_url`, and `checked_at`, plus at least one independently verified claim of each required type. Each `evidence_text_original` must occur in the retrieved text for its exact `evidence_url`. Email and contact form fields are optional and must never be guessed.
+An `accepted` record requires `assessment_recommendation: accepted`, non-empty `company_name`, `canonical_url`, and `checked_at`, plus at least one independently verified claim of each required type. Each `evidence_text_original` must occur in the retrieved text for its exact `evidence_url`. Email and contact form fields are optional and must never be guessed. The finalizer may downgrade an AI assessment but never promote `review` or `rejected`.

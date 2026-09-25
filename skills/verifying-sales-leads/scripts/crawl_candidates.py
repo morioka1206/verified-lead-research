@@ -6,8 +6,34 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from typing import Any
 
 from leadlib import crawl_company, validate_campaign
+
+
+def write_checkpoint(path: Path, results: list[dict[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(
+        json.dumps(results, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    temporary.replace(path)
+
+
+def load_checkpoint(path: Path) -> dict[str, dict[str, Any]]:
+    if not path.exists():
+        return {}
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, list):
+        raise ValueError("existing crawl output must be a JSON array")
+    by_url: dict[str, dict[str, Any]] = {}
+    for item in payload:
+        if not isinstance(item, dict):
+            raise ValueError("existing crawl output entries must be objects")
+        candidate_url = (item.get("candidate") or {}).get("url")
+        if candidate_url:
+            by_url[candidate_url] = item
+    return by_url
 
 
 def main() -> int:
@@ -16,6 +42,7 @@ def main() -> int:
     parser.add_argument("--candidates", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--no-browser", action="store_true")
+    parser.add_argument("--restart", action="store_true", help="ignore and replace an existing checkpoint")
     parser.add_argument("--timeout", type=float, default=15.0)
     parser.add_argument("--delay", type=float, default=1.0, help="seconds between pages for one company")
     args = parser.parse_args()
@@ -26,8 +53,24 @@ def main() -> int:
     candidates = json.loads(args.candidates.read_text(encoding="utf-8"))
     candidates = candidates[: int(campaign.get("max_candidates", 100))]
     max_pages = min(int(campaign.get("max_pages_per_company", 5)), 5)
-    results = []
+    checkpoint = {} if args.restart else load_checkpoint(args.output)
+    candidate_urls = {candidate.get("url") for candidate in candidates}
+    results_by_url = {
+        url: result for url, result in checkpoint.items() if url in candidate_urls
+    }
+    write_checkpoint(
+        args.output,
+        [
+            results_by_url[candidate["url"]]
+            for candidate in candidates
+            if candidate.get("url") in results_by_url
+        ],
+    )
     for index, candidate in enumerate(candidates, start=1):
+        if candidate.get("url") in results_by_url:
+            result = results_by_url[candidate["url"]]
+            print(f"[{index}/{len(candidates)}] {candidate['url']} -> {result['site_status']} (checkpoint)")
+            continue
         result = crawl_company(
             candidate,
             max_pages=max_pages,
@@ -35,10 +78,16 @@ def main() -> int:
             browser_fallback=not args.no_browser,
             delay_seconds=args.delay,
         )
-        results.append(result)
+        results_by_url[candidate["url"]] = result
+        write_checkpoint(
+            args.output,
+            [
+                results_by_url[item["url"]]
+                for item in candidates
+                if item.get("url") in results_by_url
+            ],
+        )
         print(f"[{index}/{len(candidates)}] {candidate['url']} -> {result['site_status']}")
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(results, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return 0
 
 

@@ -31,7 +31,7 @@ Run `scripts/bootstrap.py` once to create the local Playwright environment. Keep
 
 ## Non-negotiable evidence rules
 
-- An accepted record must have verified on-site evidence for product relevance, target buyer role, and target-market activity.
+- An accepted record must have an AI assessment recommendation of `accepted` and verified on-site evidence for product relevance, target buyer role, and target-market activity. Deterministic validation may downgrade an assessment when evidence is missing or the site is blocked, but it must never promote `review` or `rejected` to `accepted`.
 - A reachable website proves only that the site was active and internally consistent at verification time. Do not claim legal incorporation unless an authoritative registry was checked.
 - Extract email addresses only when they are publicly displayed in retrieved content. Never synthesize addresses from naming conventions.
 - Treat contact-form discovery as optional best effort. Record only a clearly identified form found within the normal five-page review; do not add extra crawling or interactive clicking just to find one. A missing form never lowers a company's verification status.
@@ -42,6 +42,6 @@ Run `scripts/bootstrap.py` once to create the local Playwright environment. Keep
 
 ## AI boundary
 
-Use model judgment for query expansion, classification, Japanese company summaries, and evidence selection. Use deterministic scripts for URL resolution, HTTP status, domain normalization, contact extraction, deduplication, evidence verification, final status, and precision calculation.
+Use model judgment for query expansion, target-fit classification, Japanese company summaries, and evidence selection. Use deterministic scripts for URL resolution, HTTP status, domain normalization, contact extraction, deduplication, evidence verification, final status, and precision calculation. The final-status script enforces evidence and availability as additional gates; it does not override the model's target-fit exclusions.
 
 Do not create numeric fit scores. When evidence is ambiguous, prefer `review` over a confident guess. Optimize accepted-list precision before list size.

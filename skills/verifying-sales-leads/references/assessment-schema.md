@@ -37,4 +37,4 @@ Each assessment must use this shape:
 }
 ```
 
-`recommendation` may be `accepted`, `review`, or `rejected`, but the finalizer—not the agent—sets the final status. An accepted record requires one source-valid claim of each type: `product`, `buyer_role`, and `target_market`.
+`recommendation` may be `accepted`, `review`, or `rejected`. The agent owns the target-fit decision, including exclusions such as competitors or unsuitable business types. The finalizer checks availability and evidence and may downgrade the result, but never upgrades `review` or `rejected`. A final accepted record therefore requires `recommendation: accepted` plus one source-valid claim of each type: `product`, `buyer_role`, and `target_market`.

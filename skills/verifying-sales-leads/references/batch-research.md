@@ -4,7 +4,7 @@ Read this reference when the user requests more than 50 accepted companies or ex
 
 ## What stays unchanged
 
-- Every accepted company still needs verified product, buyer-role, and target-market evidence.
+- Every accepted company still needs an AI target-fit recommendation of `accepted` plus verified product, buyer-role, and target-market evidence. Never promote `review` or `rejected` because evidence is complete.
 - Each company still receives at most five page fetches.
 - Static HTTP remains first; Playwright is fallback only.
 - Robots guidance, delays, public-data boundaries, and no-CAPTCHA-bypass rules remain in force.

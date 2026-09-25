@@ -6,6 +6,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from html.parser import HTMLParser
+from http.client import HTTPException
 import html
 import ipaddress
 import os
@@ -15,7 +16,7 @@ import socket
 import time
 from typing import Any, Callable, Iterable
 from urllib.error import HTTPError, URLError
-from urllib.parse import urljoin, urlparse, urlunparse
+from urllib.parse import quote, urljoin, urlparse, urlunparse
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 from urllib.robotparser import RobotFileParser
 
@@ -130,8 +131,9 @@ def canonicalize_url(url: str) -> str:
     port = parsed.port
     default_port = (scheme == "http" and port == 80) or (scheme == "https" and port == 443)
     netloc = hostname if port is None or default_port else f"{hostname}:{port}"
-    path = parsed.path or "/"
-    return urlunparse((scheme, netloc, path, "", parsed.query, ""))
+    path = quote(parsed.path or "/", safe="/%:@-._~!$&'()*+,;=")
+    query = quote(parsed.query, safe="/%?:@-._~!$&'()*+,;=")
+    return urlunparse((scheme, netloc, path, "", query, ""))
 
 
 def domain_key(url: str) -> str:
@@ -232,7 +234,7 @@ def robots_allows(url: str, *, timeout: float = 10.0, allow_private: bool = Fals
             charset = response.headers.get_content_charset() or "utf-8"
     except HTTPError as exc:
         return exc.code not in {401, 403}
-    except (URLError, OSError, ValueError):
+    except (HTTPException, URLError, OSError, ValueError):
         return True
     return robots_text_allows(body.decode(charset, errors="replace"), url)
 
@@ -412,7 +414,7 @@ def fetch_page(
         if exc.code in {401, 403, 429}:
             raise
         static_error = exc
-    except (URLError, OSError, ValueError) as exc:
+    except (HTTPException, URLError, OSError, ValueError) as exc:
         static_error = exc
 
     if not browser_fallback:
@@ -478,7 +480,7 @@ def crawl_company(
                 browser_fallback=browser_fallback,
                 allow_private=allow_private,
             )
-        except (HTTPError, URLError, OSError, ValueError, RuntimeError) as exc:
+        except (HTTPException, HTTPError, URLError, OSError, ValueError, RuntimeError) as exc:
             errors.append({"url": requested_url, "reason": str(exc)})
             continue
 
@@ -577,12 +579,12 @@ def finalize_record(crawl: dict[str, Any], assessment: dict[str, Any]) -> dict[s
     if crawl.get("site_status") == "blocked":
         status = "blocked"
         reason = "The official website could not be retrieved"
-    elif REQUIRED_CLAIM_TYPES.issubset(claim_types):
-        status = "accepted"
-        reason = None
     elif recommendation == "rejected":
         status = "rejected"
         reason = assessment.get("rejection_reason") or "The company did not meet the campaign requirements"
+    elif recommendation == "accepted" and REQUIRED_CLAIM_TYPES.issubset(claim_types):
+        status = "accepted"
+        reason = None
     else:
         status = "review"
         reason = None
@@ -605,6 +607,7 @@ def finalize_record(crawl: dict[str, Any], assessment: dict[str, Any]) -> dict[s
         "company_overview_ja": assessment.get("company_overview_ja"),
         "emails": crawl.get("emails") or [],
         "contact_forms": crawl.get("contact_forms") or [],
+        "assessment_recommendation": recommendation,
         "verification_status": status,
         "claims": valid_claims,
         "uncertainties": list(dict.fromkeys(uncertainties)),
