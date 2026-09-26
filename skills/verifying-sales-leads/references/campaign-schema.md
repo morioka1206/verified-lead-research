@@ -44,6 +44,8 @@ Suggested `market.activity_evidence` values are:
 
 `secondary_buyer_types` are allowed only when the user accepts adjacent roles. `contact_preference` guides collection but never replaces the three-evidence acceptance gate.
 
+`excluded_types` は単なる検索メモではなく、各候補で明示確認する合否条件である。評価JSONには、ここにある全項目と同じ文字列の `exclusion_checks` を作る。確認漏れや `unclear` が1つでもあれば `accepted` にしない。特に卸・販売会社を探す場合は、自社製造会社を除外するのか、製造と販売を兼ねる会社を許容するのかをヒアリングで分けて記録する。
+
 `research_mode` controls only how work is divided and persisted:
 
 - `standard`: up to 50 accepted companies and 100 checked candidates.

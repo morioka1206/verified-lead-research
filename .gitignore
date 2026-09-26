@@ -4,7 +4,8 @@
 !.env.example
 .venv/
 .playwright-browsers/
-node_modules/
+node_modules
+outputs/
 dist/
 coverage/
 .wrangler/

@@ -32,9 +32,24 @@ Each assessment must use this shape:
       "evidence_text_ja": "カリフォルニアを拠点としている。"
     }
   ],
+  "exclusion_checks": [
+    {
+      "type": "自社製造メーカー",
+      "result": "not_matched",
+      "reason_ja": "公式サイトでは輸入・卸売を主な役割として確認し、自社製造の明記は確認できなかった。"
+    }
+  ],
   "uncertainties": [],
   "rejection_reason": null
 }
 ```
 
 `recommendation` may be `accepted`, `review`, or `rejected`. The agent owns the target-fit decision, including exclusions such as competitors or unsuitable business types. The finalizer checks availability and evidence and may downgrade the result, but never upgrades `review` or `rejected`. A final accepted record therefore requires `recommendation: accepted` plus one source-valid claim of each type: `product`, `buyer_role`, and `target_market`.
+
+キャンペーンの `excluded_types` に項目がある場合は、各項目と同じ文字列を `exclusion_checks[].type` に入れ、1項目ずつ確認する。`result` は次のいずれかにする。
+
+- `not_matched`: 取得した公式ページを確認した範囲では該当しない
+- `matched`: 除外条件に該当する
+- `unclear`: 製造と販売を兼ねるなど、除外条件への該当を決められない
+
+すべての除外条件が `not_matched` の場合だけ最終 `accepted` になれる。`matched` は `rejected`、不足または `unclear` は `review` へ下がる。販売会社を探す案件では、商品を製造している証拠を販売・卸の証拠として代用しない。製造会社も許容するかどうかは、ヒアリングで決めた条件に従う。

@@ -8,7 +8,29 @@ import json
 from pathlib import Path
 from typing import Any
 
-from leadlib import crawl_company, validate_campaign
+from leadlib import (
+    DEFAULT_LINK_GROUP_ORDER,
+    HOSPITALITY_LINK_GROUP_ORDER,
+    crawl_company,
+    validate_campaign,
+)
+
+
+def page_priorities(campaign: dict[str, Any]) -> tuple[str, ...]:
+    objective = str(campaign.get("objective") or "").lower()
+    buyer_parts: list[str] = []
+    for item in campaign.get("buyer_types") or []:
+        if not isinstance(item, dict):
+            continue
+        buyer_parts.append(str(item.get("name") or ""))
+        buyer_parts.extend(str(value) for value in item.get("keywords") or [])
+    buyer_text = " ".join(buyer_parts).lower()
+    if "hospitality" in objective or any(
+        hint in buyer_text
+        for hint in ("cafe", "café", "coffee shop", "restaurant", "カフェ", "レストラン")
+    ):
+        return HOSPITALITY_LINK_GROUP_ORDER
+    return DEFAULT_LINK_GROUP_ORDER
 
 
 def write_checkpoint(path: Path, results: list[dict[str, Any]]) -> None:
@@ -53,6 +75,7 @@ def main() -> int:
     candidates = json.loads(args.candidates.read_text(encoding="utf-8"))
     candidates = candidates[: int(campaign.get("max_candidates", 100))]
     max_pages = min(int(campaign.get("max_pages_per_company", 5)), 5)
+    priority_groups = page_priorities(campaign)
     checkpoint = {} if args.restart else load_checkpoint(args.output)
     candidate_urls = {candidate.get("url") for candidate in candidates}
     results_by_url = {
@@ -77,6 +100,7 @@ def main() -> int:
             timeout=args.timeout,
             browser_fallback=not args.no_browser,
             delay_seconds=args.delay,
+            priority_groups=priority_groups,
         )
         results_by_url[candidate["url"]] = result
         write_checkpoint(

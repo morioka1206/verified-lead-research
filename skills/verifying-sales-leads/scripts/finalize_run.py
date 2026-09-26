@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate AI assessments and export audit JSON plus Japanese CSV."""
+"""Validate AI assessments and export audit JSON, CSV, and clean sales Excel."""
 
 from __future__ import annotations
 
@@ -75,13 +75,35 @@ def csv_row(record: dict[str, Any]) -> dict[str, str]:
     }
 
 
-def finalize(crawls: list[dict[str, Any]], assessments: list[dict[str, Any]], target: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+def deduplicate_crawls(crawls: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Keep one crawl per candidate URL, preferring the newest supplied result."""
+    ordered_urls: list[str] = []
+    by_url: dict[str, dict[str, Any]] = {}
+    anonymous: list[dict[str, Any]] = []
+    for crawl in crawls:
+        candidate_url = (crawl.get("candidate") or {}).get("url")
+        if not candidate_url:
+            anonymous.append(crawl)
+            continue
+        if candidate_url not in by_url:
+            ordered_urls.append(candidate_url)
+        by_url[candidate_url] = crawl
+    return [by_url[url] for url in ordered_urls] + anonymous
+
+
+def finalize(
+    crawls: list[dict[str, Any]],
+    assessments: list[dict[str, Any]],
+    target: int,
+    campaign: dict[str, Any] | None = None,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    crawls = deduplicate_crawls(crawls)
     by_url = {item["candidate_url"]: item for item in assessments}
     records = []
     for crawl in crawls:
         candidate_url = (crawl.get("candidate") or {}).get("url")
         assessment = by_url.get(candidate_url, {"recommendation": "review", "claims": [], "uncertainties": ["AI assessment missing"]})
-        records.append(finalize_record(crawl, assessment))
+        records.append(finalize_record(crawl, assessment, campaign))
     accepted = [record for record in records if record["verification_status"] == "accepted"][:target]
     summary = {
         "generated_at": utc_now(),
@@ -131,7 +153,12 @@ def main() -> int:
         for path in args.assessments
         for item in json.loads(path.read_text(encoding="utf-8"))
     ]
-    records, result = finalize(crawls, assessments, int(campaign.get("target_accepted", 50)))
+    records, result = finalize(
+        crawls,
+        assessments,
+        int(campaign.get("target_accepted", 50)),
+        campaign,
+    )
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     (args.output_dir / "audit.json").write_text(json.dumps(records, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -140,6 +167,9 @@ def main() -> int:
         writer = csv.DictWriter(handle, fieldnames=CSV_COLUMNS)
         writer.writeheader()
         writer.writerows(csv_row(record) for record in result["accepted"])
+    from export_review_workbook import write_sales_workbook
+
+    write_sales_workbook(result["accepted"], args.output_dir / "leads.xlsx")
     print(json.dumps(result["summary"], ensure_ascii=False))
     return 0 if result["summary"]["target_met"] else 3
 

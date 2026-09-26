@@ -131,6 +131,13 @@ class BatchRunTests(unittest.TestCase):
                 rows = list(csv.DictReader(handle))
             self.assertEqual(len(rows), 2)
             self.assertEqual(len(json.loads((run_dir / "audit.json").read_text(encoding="utf-8"))), 2)
+            self.assertTrue((run_dir / "leads.xlsx").exists())
+            from openpyxl import load_workbook
+
+            workbook = load_workbook(run_dir / "leads.xlsx", read_only=True)
+            self.assertEqual(workbook.sheetnames, ["営業リスト"])
+            headers = [cell.value for cell in next(workbook["営業リスト"].iter_rows(min_row=4, max_row=4))]
+            self.assertNotIn("人の判定", headers)
 
 
 if __name__ == "__main__":

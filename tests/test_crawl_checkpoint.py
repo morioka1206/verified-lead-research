@@ -14,6 +14,16 @@ import crawl_candidates  # noqa: E402
 
 
 class CrawlCheckpointTests(unittest.TestCase):
+    def test_cafe_campaign_uses_hospitality_page_priorities(self):
+        campaign = {
+            "objective": "find_hospitality_buyers",
+            "buyer_types": [{"name": "カフェ", "keywords": ["cafe"]}],
+        }
+        self.assertEqual(
+            crawl_candidates.page_priorities(campaign),
+            crawl_candidates.HOSPITALITY_LINK_GROUP_ORDER,
+        )
+
     def fixture(self, work):
         campaign = {
             "id": "checkpoint-test",

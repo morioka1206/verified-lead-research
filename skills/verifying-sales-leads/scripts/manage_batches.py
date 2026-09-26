@@ -11,6 +11,7 @@ import sqlite3
 from typing import Any
 
 from finalize_run import CSV_COLUMNS, csv_row
+from export_review_workbook import write_sales_workbook
 from leadlib import canonicalize_url, domain_key, finalize_record, utc_now, validate_campaign
 
 
@@ -326,6 +327,7 @@ def export_outputs(run_dir: Path) -> dict[str, Any]:
             row["human_notes"] = notes
             writer.writerow(row)
     temporary.replace(run_dir / "leads.csv")
+    write_sales_workbook(accepted, run_dir / "leads.xlsx")
     return summary
 
 
@@ -337,6 +339,7 @@ def complete_batch(
 ) -> dict[str, Any]:
     crawls = read_array(crawls_path, "crawls")
     assessments = read_array(assessments_path, "assessments")
+    campaign = load_campaign(run_dir)
     connection = connect(run_dir)
     batch = connection.execute("SELECT status FROM batches WHERE id = ?", (batch_id,)).fetchone()
     if not batch:
@@ -376,7 +379,7 @@ def complete_batch(
         for row in expected_rows:
             crawl = crawl_by_url[row["url"]]
             assessment = assessment_by_url[row["url"]]
-            record = finalize_record(crawl, assessment)
+            record = finalize_record(crawl, assessment, campaign)
             connection.execute(
                 """
                 INSERT INTO records

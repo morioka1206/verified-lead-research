@@ -51,6 +51,25 @@ FORM_CONTEXT_HINTS = (
 )
 LINK_GROUP_HINTS = {
     "about": ("about", "company", "who-we-are", "会社概要", "企業情報"),
+    "menu": (
+        "menu",
+        "drink",
+        "beverage",
+        "food-tea",
+        "food & tea",
+        "メニュー",
+    ),
+    "locations": (
+        "location",
+        "/cafes",
+        "our cafes",
+        "visit-us",
+        "visit us",
+        "find-us",
+        "find us",
+        "store-locator",
+        "店舗",
+    ),
     "products": ("product", "catalog", "matcha", "tea", "商品", "製品"),
     "distribution": (
         "wholesale",
@@ -65,7 +84,10 @@ LINK_GROUP_HINTS = {
     ),
     "contact": CONTACT_HINTS,
 }
+DEFAULT_LINK_GROUP_ORDER = ("about", "products", "distribution", "contact")
+HOSPITALITY_LINK_GROUP_ORDER = ("about", "menu", "locations", "contact")
 REQUIRED_CLAIM_TYPES = {"product", "buyer_role", "target_market"}
+EXCLUSION_CHECK_RESULTS = {"not_matched", "matched", "unclear"}
 
 
 def utc_now() -> str:
@@ -433,16 +455,41 @@ def _link_group(link: dict[str, str]) -> str | None:
     return None
 
 
-def priority_links(links: Iterable[dict[str, str]], base_url: str) -> list[str]:
-    grouped: dict[str, str] = {}
+def _link_group_score(group: str, link: dict[str, str]) -> int:
+    haystack = f"{urlparse(link['url']).path} {link.get('text', '')}".lower()
+    if group != "menu":
+        return 0
+    score = 0
+    if any(
+        hint in haystack
+        for hint in ("drink", "beverage", "coffee", "tea", "matcha", "non-coffee")
+    ):
+        score += 10
+    if "menu" in haystack:
+        score += 2
+    if any(hint in haystack for hint in ("brunch", "lunch", "dinner", "food")):
+        score -= 3
+    return score
+
+
+def priority_links(
+    links: Iterable[dict[str, str]],
+    base_url: str,
+    group_order: Iterable[str] = DEFAULT_LINK_GROUP_ORDER,
+) -> list[str]:
+    grouped: dict[str, tuple[int, str]] = {}
     for link in links:
         url = link["url"]
         if not same_site(url, base_url):
             continue
         group = _link_group(link)
-        if group and group not in grouped:
-            grouped[group] = url
-    return [grouped[group] for group in ("about", "products", "distribution", "contact") if group in grouped]
+        if not group:
+            continue
+        score = _link_group_score(group, link)
+        current = grouped.get(group)
+        if current is None or score > current[0]:
+            grouped[group] = (score, url)
+    return [grouped[group][1] for group in group_order if group in grouped]
 
 
 def crawl_company(
@@ -453,6 +500,7 @@ def crawl_company(
     browser_fallback: bool = True,
     allow_private: bool = False,
     delay_seconds: float = 1.0,
+    priority_groups: Iterable[str] = DEFAULT_LINK_GROUP_ORDER,
 ) -> dict[str, Any]:
     if delay_seconds < 0:
         raise ValueError("delay_seconds must not be negative")
@@ -503,7 +551,9 @@ def crawl_company(
             haystack = f"{link['url']} {link.get('text', '')}".lower()
             if any(hint in haystack for hint in CONTACT_HINTS):
                 external_contact_urls.append(link["url"])
-        for link in priority_links(parsed["links"], fetched.final_url):
+        for link in priority_links(
+            parsed["links"], fetched.final_url, group_order=priority_groups
+        ):
             canonical = canonicalize_url(link)
             if canonical not in seen and canonical not in queue:
                 queue.append(canonical)
@@ -570,11 +620,68 @@ def validate_claims(claims: Any, pages: list[dict[str, Any]]) -> tuple[list[dict
     return valid, errors
 
 
-def finalize_record(crawl: dict[str, Any], assessment: dict[str, Any]) -> dict[str, Any]:
+def validate_exclusion_checks(
+    checks: Any,
+    campaign: dict[str, Any] | None,
+) -> tuple[list[dict[str, Any]], list[str]]:
+    excluded_types = [
+        str(item).strip()
+        for item in (campaign or {}).get("excluded_types", [])
+        if str(item).strip()
+    ]
+    if not excluded_types:
+        return list(checks) if isinstance(checks, list) else [], []
+    if not isinstance(checks, list):
+        return [], ["Excluded-type checks are missing"]
+
+    valid: list[dict[str, Any]] = []
+    errors: list[str] = []
+    by_type: dict[str, dict[str, Any]] = {}
+    for index, check in enumerate(checks):
+        if not isinstance(check, dict):
+            errors.append(f"exclusion check {index} is not an object")
+            continue
+        excluded_type = str(check.get("type") or "").strip()
+        result = check.get("result")
+        if excluded_type not in excluded_types:
+            errors.append(f"exclusion check {index} does not match a campaign exclusion")
+            continue
+        if excluded_type in by_type:
+            errors.append(f"duplicate exclusion check: {excluded_type}")
+            continue
+        if result not in EXCLUSION_CHECK_RESULTS:
+            errors.append(f"exclusion check {index} has an invalid result")
+            continue
+        normalized = dict(check)
+        normalized["type"] = excluded_type
+        by_type[excluded_type] = normalized
+        valid.append(normalized)
+
+    for excluded_type in excluded_types:
+        if excluded_type not in by_type:
+            errors.append(f"Missing excluded-type check: {excluded_type}")
+    return valid, errors
+
+
+def finalize_record(
+    crawl: dict[str, Any],
+    assessment: dict[str, Any],
+    campaign: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     pages = crawl.get("pages") or []
     valid_claims, claim_errors = validate_claims(assessment.get("claims"), pages)
+    exclusion_checks, exclusion_errors = validate_exclusion_checks(
+        assessment.get("exclusion_checks"), campaign
+    )
     claim_types = {claim["type"] for claim in valid_claims}
     recommendation = assessment.get("recommendation", "review")
+    matched_exclusions = [
+        check["type"] for check in exclusion_checks if check.get("result") == "matched"
+    ]
+    unclear_exclusions = [
+        check["type"] for check in exclusion_checks if check.get("result") == "unclear"
+    ]
+    exclusions_clear = not exclusion_errors and not matched_exclusions and not unclear_exclusions
 
     if crawl.get("site_status") == "blocked":
         status = "blocked"
@@ -582,7 +689,14 @@ def finalize_record(crawl: dict[str, Any], assessment: dict[str, Any]) -> dict[s
     elif recommendation == "rejected":
         status = "rejected"
         reason = assessment.get("rejection_reason") or "The company did not meet the campaign requirements"
-    elif recommendation == "accepted" and REQUIRED_CLAIM_TYPES.issubset(claim_types):
+    elif matched_exclusions:
+        status = "rejected"
+        reason = "Matched excluded company type: " + ", ".join(matched_exclusions)
+    elif (
+        recommendation == "accepted"
+        and REQUIRED_CLAIM_TYPES.issubset(claim_types)
+        and exclusions_clear
+    ):
         status = "accepted"
         reason = None
     else:
@@ -594,6 +708,8 @@ def finalize_record(crawl: dict[str, Any], assessment: dict[str, Any]) -> dict[s
         company_name = pages[0].get("company_name_hint")
     uncertainties = list(assessment.get("uncertainties") or [])
     uncertainties.extend(claim_errors)
+    uncertainties.extend(exclusion_errors)
+    uncertainties.extend(f"Excluded type is unclear: {item}" for item in unclear_exclusions)
     missing = sorted(REQUIRED_CLAIM_TYPES - claim_types)
     if status == "review" and missing:
         uncertainties.append(f"Missing verified evidence: {', '.join(missing)}")
@@ -610,6 +726,7 @@ def finalize_record(crawl: dict[str, Any], assessment: dict[str, Any]) -> dict[s
         "assessment_recommendation": recommendation,
         "verification_status": status,
         "claims": valid_claims,
+        "exclusion_checks": exclusion_checks,
         "uncertainties": list(dict.fromkeys(uncertainties)),
         "rejection_reason": reason,
         "checked_at": crawl.get("checked_at") or utc_now(),

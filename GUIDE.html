@@ -162,7 +162,7 @@
   <header class="appbar">
     <div class="appbar-inner">
       <a class="brand" href="#top"><span class="brand-mark">✓</span><span>証拠付き営業リスト</span></a>
-      <span class="version">配布版 v1.1.2 · Mac / Windows</span>
+      <span class="version">配布版 v1.1.4 · Mac / Windows</span>
     </div>
   </header>
 
@@ -232,7 +232,7 @@
 
         <p>企業が合格するには、AIが競合・対象外ではないと判断したうえで、次の3つがすべて必要です。</p>
         <div class="criteria"><div class="criterion"><strong>商材との関係</strong><br>扱う・使う・販売する</div><div class="plus">＋</div><div class="criterion"><strong>会社の役割</strong><br>輸入・卸・購入など</div><div class="plus">＋</div><div class="criterion"><strong>対象市場の活動</strong><br>販売・配送・顧客・拠点</div></div>
-        <div class="callout yellow"><strong>自動で格上げしない</strong>AIが競合や対象外として <code>review</code>／<code>rejected</code> にした会社は、3つの証拠があっても合格へ変更しません。プログラムは誤採用を防ぐために判定を下げることだけができます。</div>
+        <div class="callout yellow"><strong>自動で格上げしない</strong>AIが競合や対象外として <code>review</code>／<code>rejected</code> にした会社は、3つの証拠があっても合格へ変更しません。さらに「メーカーを除外」などの条件は1項目ずつ確認し、未確認・該当・判断不能なら合格にしません。</div>
       </section>
 
       <section id="install">
@@ -316,11 +316,14 @@ python3 skills/verifying-sales-leads/scripts/bootstrap.py
       <section id="output">
         <h2>最後に受け取るもの</h2>
         <div class="output">
-          <article class="output-card"><h3>leads.csv</h3><p>営業担当が見る日本語の表。</p><ul><li>会社名と公式URL</li><li>公開メール</li><li>短い会社概要</li><li>証拠URL</li><li>人の確認欄</li></ul></article>
+          <article class="output-card"><h3>leads.xlsx</h3><p>営業担当が最初に開く、すっきりした全件リスト。</p><ul><li>会社名と公式URL</li><li>会社種別と短い概要</li><li>公開メール</li><li>商材との関係</li><li>判定欄や確認メモは表示しない</li></ul></article>
+          <article class="output-card"><h3>品質チェック表</h3><p>希望した時だけ作る、営業リストとは別の確認表。</p><ul><li>既定は代表的な10社</li><li>Google SheetsまたはExcel</li><li>正しい／間違いの選択欄</li><li>3種類の証拠と証拠URL</li><li>複数人の同時確認にも対応</li></ul></article>
+          <article class="output-card"><h3>leads.csv</h3><p>別のシステムへ渡しやすい日本語データ。</p><ul><li>会社名と公式URL</li><li>公開メール</li><li>短い会社概要</li><li>証拠URL</li></ul></article>
           <article class="output-card"><h3>audit.json</h3><p>あとから判定を確かめる記録。</p><ul><li>全候補と判定</li><li>公式サイトの原文</li><li>証拠ページ</li><li>確認日時</li><li>不確かな点</li></ul></article>
           <article class="output-card"><h3>research.sqlite3</h3><p>大量調査の途中経過を覚える台帳。</p><ul><li>調査済み・未調査の候補</li><li>バッチ番号と進捗</li><li>重複を防ぐ公式ドメイン</li><li>通常は開かなくてよい内部ファイル</li></ul></article>
           <article class="output-card"><h3>summary.json</h3><p>いまどこまで進んだかを示す記録。</p><ul><li>確認済み候補数</li><li>合格会社数</li><li>残りの目標数</li><li>次にすること</li></ul></article>
         </div>
+        <div class="callout green"><strong>品質チェックはリスト完成後に選べます</strong>10社だけ確認、全件確認、今回はしない、から選びます。10社は先頭からではなく、判断が難しい会社と異なる会社種別を混ぜます。9社以上が正しければ簡易チェックは合格、8社以下なら20社または全件へ広げます。</div>
         <p style="margin-top:18px">最初の抹茶・アメリカ実験では、37候補を確認し、3証拠がそろった30社を出力しました。利用者が30社すべての公式URLを確認し、30社すべてを正しいと判定しました。</p>
         <div class="result-line"><div><strong>37</strong><span>公式サイト確認</span></div><div><strong>30</strong><span>3証拠で合格</span></div><div><strong>30 / 30</strong><span>人の確認で正しい</span></div></div>
       </section>
@@ -337,9 +340,10 @@ python3 skills/verifying-sales-leads/scripts/bootstrap.py
         <details><summary>アップデートはどうしますか？</summary><div>新しい配布フォルダへ入れ替え、もう一度 `INSTALL.command` を開きます。このインストーラーが以前に置いたファイルだけを更新します。</div></details>
         <details><summary>ChatGPTやClaudeのAPI契約は必要ですか？</summary><div>このSkillをCodexまたはClaude Codeの会話内で使う段階では、別のAI API契約は不要です。将来、独立したWebアプリとして自動運転する場合は別途実行基盤が必要です。</div></details>
         <details><summary>問い合わせフォームが空欄でも大丈夫？</summary><div>大丈夫です。フォーム探索は補助機能です。フォームだと明確に確認できた時だけ保存し、分からない場合は空欄にします。会社の合否は、AIの対象適合判定と、商材・会社の役割・対象市場の活動という3種類の証拠で決まります。</div></details>
+        <details><summary>ほかの人と一緒に確認できますか？</summary><div>できます。品質チェックを選んだ後、GoogleスプレッドシートまたはExcelを選びます。Google Sheetsなら複数人で同時に「正しい／間違い」とメモを入力できます。共有相手や公開範囲は、持ち主が決めます。</div></details>
       </section>
 
-      <footer>証拠付き営業リスト · 配布版 v1.1.2 · 2026-09-25</footer>
+      <footer>証拠付き営業リスト · 配布版 v1.1.4 · 2026-09-26</footer>
     </main>
   </div>
 

@@ -57,6 +57,56 @@ class LeadLibraryTests(unittest.TestCase):
         self.assertFalse(parsed["has_form"])
         self.assertEqual(len(leadlib.priority_links(parsed["links"], "https://example.com/")), 4)
 
+    def test_hospitality_priority_follows_menu_and_locations(self):
+        html = """
+        <a href="/about">About</a>
+        <a href="/menu">Drink Menu</a>
+        <a href="/locations">Our Locations</a>
+        <a href="/products">Products</a>
+        <a href="/wholesale">Wholesale</a>
+        <a href="/contact">Contact</a>
+        """
+        parsed = leadlib.parse_site(html, "https://example.com/")
+        self.assertEqual(
+            leadlib.priority_links(
+                parsed["links"],
+                "https://example.com/",
+                group_order=leadlib.HOSPITALITY_LINK_GROUP_ORDER,
+            ),
+            [
+                "https://example.com/about",
+                "https://example.com/menu",
+                "https://example.com/locations",
+                "https://example.com/contact",
+            ],
+        )
+
+    def test_hospitality_prefers_drink_menu_over_food_menu(self):
+        html = """
+        <a href="/menus/brunch-lunch">Brunch & Lunch Menu</a>
+        <a href="/menus/cafe-beverage">Cafe Beverage Menu</a>
+        <a href="/locations">Locations</a>
+        """
+        parsed = leadlib.parse_site(html, "https://example.com/")
+        links = leadlib.priority_links(
+            parsed["links"],
+            "https://example.com/",
+            group_order=leadlib.HOSPITALITY_LINK_GROUP_ORDER,
+        )
+        self.assertEqual(links[0], "https://example.com/menus/cafe-beverage")
+
+    def test_hospitality_recognizes_cafes_as_locations(self):
+        html = '<a href="/cafes/">Cafes</a>'
+        parsed = leadlib.parse_site(html, "https://example.com/")
+        self.assertEqual(
+            leadlib.priority_links(
+                parsed["links"],
+                "https://example.com/",
+                group_order=leadlib.HOSPITALITY_LINK_GROUP_ORDER,
+            ),
+            ["https://example.com/cafes/"],
+        )
+
     def test_contact_form_is_not_confused_with_newsletter(self):
         html = """
         <form action="/newsletter"><input name="email"><button>Subscribe</button></form>
@@ -212,6 +262,48 @@ class LeadLibraryTests(unittest.TestCase):
         )
         self.assertEqual(claims, [])
         self.assertTrue(errors)
+
+    def test_campaign_exclusions_must_be_checked_before_acceptance(self):
+        page = {
+            "url": "https://example.com/about",
+            "text": "Industrial screws. We distribute fasteners in Thailand. Factory production.",
+        }
+        crawl = {
+            "candidate": {"url": "https://example.com/"},
+            "canonical_url": "https://example.com/",
+            "final_url": page["url"],
+            "site_status": "active",
+            "pages": [page],
+            "checked_at": "2026-09-26T00:00:00+00:00",
+        }
+        assessment = {
+            "company_name": "Example Fasteners",
+            "recommendation": "accepted",
+            "claims": [
+                {"type": "product", "evidence_url": page["url"], "evidence_text_original": "Industrial screws."},
+                {"type": "buyer_role", "evidence_url": page["url"], "evidence_text_original": "We distribute fasteners in Thailand."},
+                {"type": "target_market", "evidence_url": page["url"], "evidence_text_original": "Thailand."},
+            ],
+        }
+        campaign = {"excluded_types": ["自社製造メーカー"]}
+
+        missing = leadlib.finalize_record(crawl, assessment, campaign)
+        self.assertEqual(missing["verification_status"], "review")
+        self.assertIn("Excluded-type checks are missing", missing["uncertainties"])
+
+        assessment["exclusion_checks"] = [
+            {"type": "自社製造メーカー", "result": "unclear", "reason_ja": "製造と流通の両方が記載されている。"}
+        ]
+        unclear = leadlib.finalize_record(crawl, assessment, campaign)
+        self.assertEqual(unclear["verification_status"], "review")
+
+        assessment["exclusion_checks"][0]["result"] = "matched"
+        matched = leadlib.finalize_record(crawl, assessment, campaign)
+        self.assertEqual(matched["verification_status"], "rejected")
+
+        assessment["exclusion_checks"][0]["result"] = "not_matched"
+        clear = leadlib.finalize_record(crawl, assessment, campaign)
+        self.assertEqual(clear["verification_status"], "accepted")
 
     def test_campaign_limits(self):
         campaign = {
