@@ -258,6 +258,8 @@ claude --plugin-dir .</pre></div><p>Claude Codeで <code>/verified-lead-research
         <details><summary>Windowsでブラウザが動くか確認したい</summary><div><div class="codebox"><button class="copy" type="button">コピー</button><pre>$env:PLAYWRIGHT_BROWSERS_PATH = "$PWD\.playwright-browsers"
 .\.venv\Scripts\python.exe -m unittest tests\test_playwright_dynamic.py -v</pre></div>最後に <code>OK</code> と表示されれば合格です。ブラウザは裏側で動くため、画面が開かないのが正常です。</div></details>
 
+        <details><summary>調査前に、ブラウザがちゃんと動くか確かめる</summary><div><p>企業のサイトを調べる前に、PCの中だけで起動と文字の表示を試せます。Macは、配布フォルダを開いたターミナルで次を実行します。</p><div class="codebox"><button class="copy" type="button">コピー</button><pre>.venv/bin/python skills/verifying-sales-leads/scripts/check_browser.py --output runs/browser-diagnostic.json</pre></div><p>WindowsのPowerShellでは次を実行します。</p><div class="codebox"><button class="copy" type="button">コピー</button><pre>.\.venv\Scripts\python.exe skills\verifying-sales-leads\scripts\check_browser.py --output runs\browser-diagnostic.json</pre></div><p><code>"status": "ok"</code> なら成功です。<code>environment_error</code> なら診断ファイルをAIに見せてください。PC側の起動不良だけで、会社が存在しないとは判断しません。通常の固定版Chromiumを裏側で動かし、安全設定は解除しません。</p><p>会社案内の奥の所在地や画像ボタン、フレームも最大5取得先の中で確認します。対応している共用ホームページでは会社別のURLを区別し、隣の会社の情報を混ぜません。すべてのサイトに対応できるわけではなく、合格条件はこれまでと同じです。</p></div></details>
+
         <div class="tabs">
           <div class="tablist" role="tablist" aria-label="利用環境">
             <button class="tab" role="tab" aria-selected="true" aria-controls="codex-panel" id="codex-tab">Codex</button>

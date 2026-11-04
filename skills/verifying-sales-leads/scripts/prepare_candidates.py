@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from leadlib import canonicalize_url, domain_key
+from leadlib import canonicalize_url, company_key
 
 
 def prepare(payload: Any, limit: int) -> list[dict[str, Any]]:
@@ -19,7 +19,7 @@ def prepare(payload: Any, limit: int) -> list[dict[str, Any]]:
     for item in payload:
         candidate = {"url": item} if isinstance(item, str) else dict(item)
         url = canonicalize_url(candidate["url"])
-        key = domain_key(url)
+        key = company_key(url)
         if key in seen_domains:
             continue
         seen_domains.add(key)

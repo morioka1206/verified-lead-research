@@ -159,6 +159,30 @@ $env:PLAYWRIGHT_BROWSERS_PATH = "$PWD\.playwright-browsers"
 .\.venv\Scripts\python.exe -m unittest tests\test_playwright_dynamic.py -v
 ```
 
+### 調査前にブラウザの状態を確かめたい
+
+フォルダを開いたターミナルで、Macは次を実行します。
+
+```bash
+.venv/bin/python skills/verifying-sales-leads/scripts/check_browser.py --output runs/browser-diagnostic.json
+```
+
+WindowsのPowerShellでは次を実行します。
+
+```powershell
+.\.venv\Scripts\python.exe skills\verifying-sales-leads\scripts\check_browser.py --output runs\browser-diagnostic.json
+```
+
+`"status": "ok"` なら、ブラウザの起動とJavaScript表示を確認できています。`environment_error` は、会社のサイトではなくPC側のブラウザ実行環境の確認が必要という意味です。この診断は企業サイトへアクセスしません。失敗した場合は診断ファイルを添えてAIに相談してください。失敗を理由に会社が存在しないとは判断しません。
+
+通常の固定版Chromiumを裏側で動かします。軽量版を明示的に選ぶ場合だけ環境変数 `VLR_BROWSER_CHANNEL=headless-shell` を指定できます。どちらも証明書やアクセス制限を回避しません。
+
+### 古い会社サイト・共用ホームページへの対応
+
+会社案内の先の所在地、画像ボタン、フレームも、1社最大5取得先の範囲で確認します。失敗した取得先も上限に含めます。日本語の古い文字コードにも対応していますが、すべてのサイトが読める保証ではありません。
+
+NNS/FRUITSの会社別ページ、`r.goope.jp`、`yamanashi-machitsukuri.jp` は会社別のURL部分を区別します。同じ会社の別ページは重複にし、隣の会社の情報は混ぜません。未知の共用サービスや別ドメインの同一会社は、会社名・所在地の追加確認が必要です。合格基準や最大件数は変えていません。
+
 ## 手動インストール（詳しい人向け）
 
 ```bash

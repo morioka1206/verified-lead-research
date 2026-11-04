@@ -12,7 +12,7 @@ from typing import Any
 
 from finalize_run import CSV_COLUMNS, csv_row
 from export_review_workbook import write_sales_workbook
-from leadlib import canonicalize_url, domain_key, finalize_record, utc_now, validate_campaign
+from leadlib import canonicalize_url, company_key, finalize_record, utc_now, validate_campaign
 
 
 DATABASE_NAME = "research.sqlite3"
@@ -113,13 +113,18 @@ def add_candidates(run_dir: Path, input_path: Path) -> dict[str, Any]:
     added = 0
     duplicates = 0
     invalid = []
+    # Recompute semantic identity from saved URLs; never rewrite legacy PK/FK keys.
+    seen_companies = {company_key(row['url']) for row in connection.execute('SELECT url FROM candidates')}
     for raw in payload:
         try:
             candidate = {"url": raw} if isinstance(raw, str) else dict(raw)
             candidate["url"] = canonicalize_url(candidate["url"])
-            domain = domain_key(candidate["url"])
+            domain = company_key(candidate["url"])
         except (KeyError, TypeError, ValueError) as exc:
             invalid.append({"candidate": raw, "reason": str(exc)})
+            continue
+        if domain in seen_companies:
+            duplicates += 1
             continue
         cursor = connection.execute(
             """
@@ -131,6 +136,7 @@ def add_candidates(run_dir: Path, input_path: Path) -> dict[str, Any]:
         )
         if cursor.rowcount:
             added += 1
+            seen_companies.add(domain)
         else:
             duplicates += 1
     connection.commit()
