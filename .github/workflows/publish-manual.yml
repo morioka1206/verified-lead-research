@@ -1,0 +1,44 @@
+name: Publish user manual
+on:
+  push:
+    branches: [main]
+    paths:
+      - GUIDE.html
+      - scripts/build_public_manual.py
+      - tests/test_manual.py
+      - .github/workflows/publish-manual.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: public-manual-pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Test manual and publication boundary
+        run: python3 -m unittest tests.test_manual -v
+      - name: Build only the public manual
+        run: python3 scripts/build_public_manual.py --output "$RUNNER_TEMP/public-manual"
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: ${{ runner.temp }}/public-manual
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+      - name: Deploy manual
+        id: deployment
+        uses: actions/deploy-pages@v4

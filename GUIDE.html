@@ -1,376 +1,65 @@
 <!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>証拠付き営業リスト — はじめてガイド</title>
-  <meta name="description" content="公式サイトの証拠付きで営業候補を探すSkillの説明、インストール、使い方。">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%232383e2'/%3E%3Cpath d='M18 33l9 9 20-23' fill='none' stroke='white' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
-  <style>
-    :root {
-      --text: #37352f;
-      --muted: #787774;
-      --faint: #9b9a97;
-      --line: #e9e9e7;
-      --surface: #f7f7f5;
-      --blue: #2383e2;
-      --blue-soft: #edf6ff;
-      --green: #0f7b6c;
-      --green-soft: #edf7f4;
-      --yellow-soft: #fff7df;
-      --red-soft: #fff0ee;
-      --code: #f1f1ef;
-      --sidebar: 230px;
-    }
-
-    * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
-    body {
-      margin: 0;
-      color: var(--text);
-      background: #fff;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", "Noto Sans JP", sans-serif;
-      font-size: 16px;
-      line-height: 1.75;
-      -webkit-font-smoothing: antialiased;
-    }
-    a { color: var(--blue); text-decoration-thickness: 1px; text-underline-offset: 3px; }
-    button { font: inherit; }
-    code { padding: .15em .35em; background: var(--code); border-radius: 4px; font-size: .9em; }
-    .skip { position: absolute; left: -9999px; }
-    .skip:focus { left: 12px; top: 12px; z-index: 100; padding: 10px 14px; background: #fff; border: 1px solid var(--line); }
-
-    .appbar { position: sticky; top: 0; z-index: 20; height: 52px; background: rgba(255,255,255,.94); border-bottom: 1px solid var(--line); backdrop-filter: blur(12px); }
-    .appbar-inner { max-width: 1180px; height: 100%; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; }
-    .brand { display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-size: .92rem; font-weight: 650; }
-    .brand-mark { width: 24px; height: 24px; display: grid; place-items: center; color: #fff; background: var(--blue); border-radius: 6px; font-size: .82rem; }
-    .version { color: var(--muted); font-size: .78rem; }
-
-    .layout { width: min(1180px, calc(100% - 40px)); margin: 0 auto; display: grid; grid-template-columns: var(--sidebar) minmax(0, 780px); gap: 72px; justify-content: center; }
-    aside { position: sticky; top: 84px; align-self: start; padding: 32px 0; font-size: .85rem; }
-    .toc-title { margin: 0 0 10px; color: var(--faint); font-size: .72rem; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
-    .toc { display: grid; gap: 2px; }
-    .toc a { padding: 5px 10px; color: var(--muted); text-decoration: none; border-radius: 6px; }
-    .toc a:hover { color: var(--text); background: var(--surface); }
-
-    main { min-width: 0; padding: 56px 0 100px; }
-    section { padding: 42px 0; border-top: 1px solid var(--line); scroll-margin-top: 70px; }
-    section:first-of-type { border-top: 0; }
-    .kicker { margin: 0 0 10px; color: var(--blue); font-size: .78rem; font-weight: 700; letter-spacing: .06em; }
-    h1 { max-width: 720px; margin: 0; font-size: clamp(2rem, 5vw, 2.8rem); line-height: 1.25; letter-spacing: -.035em; font-weight: 720; }
-    h2 { margin: 0 0 12px; font-size: clamp(1.45rem, 3vw, 1.85rem); line-height: 1.35; letter-spacing: -.02em; font-weight: 700; }
-    h3 { margin: 0 0 8px; font-size: 1.05rem; line-height: 1.5; font-weight: 680; }
-    p { margin: 0 0 14px; }
-    .lede { max-width: 690px; margin: 18px 0 22px; color: var(--muted); font-size: 1.05rem; }
-    .meta-row { display: flex; flex-wrap: wrap; gap: 8px; }
-    .pill { padding: 5px 10px; color: var(--muted); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; font-size: .78rem; }
-    .jump-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
-    .button { display: inline-flex; align-items: center; gap: 7px; padding: 9px 14px; color: #fff; background: var(--blue); border: 1px solid var(--blue); border-radius: 7px; text-decoration: none; font-size: .88rem; font-weight: 650; }
-    .button.secondary { color: var(--text); background: #fff; border-color: #d8d8d6; }
-
-    .callout { margin: 20px 0; padding: 16px 18px; background: var(--blue-soft); border-radius: 8px; }
-    .callout strong { display: block; margin-bottom: 3px; }
-    .callout.yellow { background: var(--yellow-soft); }
-    .callout.green { background: var(--green-soft); }
-    .callout.red { background: var(--red-soft); }
-
-    .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 22px; }
-    .feature { padding: 18px; border: 1px solid var(--line); border-radius: 9px; }
-    .feature-icon { width: 30px; height: 30px; margin-bottom: 12px; display: grid; place-items: center; color: var(--blue); background: var(--blue-soft); border-radius: 7px; font-weight: 750; font-size: .82rem; }
-    .feature p { margin: 0; color: var(--muted); font-size: .9rem; }
-
-    .comparison { width: 100%; margin: 22px 0; border-collapse: separate; border-spacing: 0; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; font-size: .9rem; }
-    .comparison th, .comparison td { padding: 13px 15px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
-    .comparison tr:last-child td { border-bottom: 0; }
-    .comparison th { background: var(--surface); font-size: .8rem; }
-    .comparison th:first-child { width: 24%; }
-    .comparison td:nth-child(3), .comparison th:nth-child(3) { background: #f8fbff; }
-    .good { color: var(--green); font-weight: 680; }
-    .risk { color: #b04a3a; }
-
-    .pipeline { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 22px 0; }
-    .pipe { position: relative; min-height: 118px; padding: 13px; background: var(--surface); border-radius: 8px; font-size: .82rem; }
-    .pipe:not(:last-child)::after { content: "→"; position: absolute; right: -8px; top: 44px; z-index: 1; color: var(--faint); }
-    .pipe b { display: block; margin-bottom: 7px; color: var(--blue); font-size: .7rem; letter-spacing: .05em; }
-    .pipe strong { display: block; margin-bottom: 5px; font-size: .9rem; line-height: 1.4; }
-    .pipe span { color: var(--muted); line-height: 1.5; }
-
-    .criteria { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 10px; align-items: center; margin: 20px 0; }
-    .criterion { padding: 16px; background: var(--surface); border-radius: 8px; text-align: center; font-size: .88rem; }
-    .plus { color: var(--faint); }
-
-    .steps { counter-reset: install; display: grid; gap: 12px; margin: 22px 0; }
-    .step { position: relative; padding: 18px 18px 18px 58px; border: 1px solid var(--line); border-radius: 9px; }
-    .step::before { counter-increment: install; content: counter(install); position: absolute; left: 17px; top: 17px; width: 26px; height: 26px; display: grid; place-items: center; color: #fff; background: var(--blue); border-radius: 50%; font-size: .78rem; font-weight: 700; }
-    .step p { margin: 3px 0 0; color: var(--muted); font-size: .9rem; }
-
-    .codebox { position: relative; margin: 14px 0; padding: 16px 94px 16px 16px; overflow-x: auto; background: #f7f7f5; border: 1px solid var(--line); border-radius: 8px; }
-    .codebox pre { margin: 0; white-space: pre-wrap; word-break: break-word; font: .82rem/1.65 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-    .copy { position: absolute; top: 9px; right: 9px; padding: 5px 9px; color: var(--muted); background: #fff; border: 1px solid #d8d8d6; border-radius: 5px; cursor: pointer; font-size: .75rem; }
-    .copy:hover { color: var(--text); }
-
-    .tabs { margin-top: 22px; }
-    .tablist { display: flex; gap: 4px; padding: 4px; width: fit-content; background: var(--surface); border-radius: 8px; }
-    .tab { padding: 7px 12px; color: var(--muted); background: transparent; border: 0; border-radius: 6px; cursor: pointer; font-size: .84rem; }
-    .tab[aria-selected="true"] { color: var(--text); background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
-    .tabpanel { padding-top: 16px; }
-    .tabpanel[hidden] { display: none; }
-
-    .output { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
-    .output-card { padding: 18px; background: var(--surface); border-radius: 9px; }
-    .output-card ul { margin: 10px 0 0; padding-left: 1.2em; color: var(--muted); font-size: .9rem; }
-
-    .result-line { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin-top: 20px; overflow: hidden; background: var(--line); border: 1px solid var(--line); border-radius: 9px; }
-    .result-line div { padding: 18px; background: #fff; text-align: center; }
-    .result-line strong { display: block; font-size: 1.45rem; }
-    .result-line span { color: var(--muted); font-size: .8rem; }
-
-    details { border-top: 1px solid var(--line); }
-    details:last-child { border-bottom: 1px solid var(--line); }
-    summary { padding: 14px 4px; cursor: pointer; font-weight: 620; }
-    details > div { padding: 0 4px 16px; color: var(--muted); font-size: .92rem; }
-
-    footer { padding: 28px 0; color: var(--faint); border-top: 1px solid var(--line); font-size: .8rem; }
-
-    @media (max-width: 900px) {
-      .layout { display: block; width: min(760px, calc(100% - 36px)); }
-      aside { display: none; }
-      main { padding-top: 38px; }
-    }
-    @media (max-width: 620px) {
-      .appbar-inner { padding: 0 16px; }
-      .layout { width: min(100% - 28px, 760px); }
-      .feature-grid, .output, .result-line { grid-template-columns: 1fr; }
-      .pipeline { grid-template-columns: 1fr; }
-      .pipe:not(:last-child)::after { display: none; }
-      .criteria { grid-template-columns: 1fr; }
-      .plus { text-align: center; }
-      .comparison { display: block; overflow-x: auto; }
-      h1 { font-size: 2rem; }
-    }
-    @media print {
-      .appbar, aside, .copy, .jump-row { display: none; }
-      .layout { display: block; width: 100%; }
-      main { padding: 0; }
-      section { break-inside: avoid; }
-      body { font-size: 11pt; }
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>証拠付き営業リスト — Verified Lead Research 利用ガイド</title>
+<meta name="description" content="公式サイトの根拠を確認する営業リスト作成Skill。Claude Code向けMac・Windows導入手順、Codexでの使い方、調査と成果物の説明。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23365b49'/%3E%3Cpath d='m8 16 5 5 11-12' fill='none' stroke='white' stroke-width='3'/%3E%3C/svg%3E">
+<style>
+:root{--paper:#faf9f6;--ink:#282d29;--muted:#687166;--line:#dfe3da;--green:#365b49;--wash:#edf1e9;--warm:#8b7b60}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:90px}body{margin:0;background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;font-size:15px;line-height:1.9;-webkit-font-smoothing:antialiased}a{color:var(--green);text-underline-offset:4px}button{font:inherit;cursor:pointer}a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--green);outline-offset:4px}.skip{position:absolute;left:-9999px}.skip:focus{left:15px;top:12px;z-index:50;background:white;padding:8px 15px}header{position:sticky;top:0;z-index:10;height:68px;display:flex;align-items:center;justify-content:space-between;padding:0 36px;background:rgba(250,249,246,.97);border-bottom:1px solid var(--line)}.brand{display:flex;align-items:center;gap:10px;color:var(--ink);text-decoration:none;font-size:13px;font-weight:600;letter-spacing:.02em}.mark{display:grid;place-items:center;width:27px;height:27px;border-radius:7px;background:var(--green);color:white}.header-links{display:flex;gap:22px;align-items:center;font-size:12px}.header-links a{text-decoration:none}.badge{border:1px solid var(--line);border-radius:24px;padding:3px 10px;font-size:10px;color:var(--muted)}.layout{max-width:1440px;margin:auto;display:grid;grid-template-columns:220px minmax(0,1fr)}aside{position:sticky;top:68px;height:calc(100vh - 68px);padding:42px 24px 24px 28px;border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:auto}.overline{font-size:10px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}aside .overline{padding-left:12px;margin:0 0 18px}.toc a{display:flex;gap:11px;padding:7px 12px;margin:1px 0;border-radius:5px;color:var(--muted);font-size:12px;text-decoration:none}.toc a span{font-family:Georgia,serif;font-size:11px;color:#89937f}.toc a:hover,.toc a[aria-current]{background:var(--wash);color:var(--green)}.side-note{margin-top:auto;border-top:1px solid var(--line);padding:18px 12px 0;font-size:11px;color:var(--muted)}main{min-width:0;padding:48px clamp(26px,4.5vw,72px) 35px}.breadcrumb{font-size:11px;color:var(--muted)}.breadcrumb span{padding:0 10px;color:#a7af9f}.hero{display:grid;grid-template-columns:1.15fr 1fr;align-items:center;gap:40px;padding:42px 0 48px}.eyebrow{display:flex;align-items:center;gap:10px;font-size:10px;font-weight:600;letter-spacing:.14em;color:var(--green)}.eyebrow:before{content:"";height:1px;width:22px;background:var(--green)}h1{font-family:"Hiragino Mincho ProN","Yu Mincho",Georgia,serif;font-size:clamp(29px,2.6vw,39px);line-height:1.65;font-weight:500;letter-spacing:.015em;margin:18px 0}h1 em{font-style:normal;color:var(--green)}.intro{font-size:14px;color:var(--muted);line-height:2;max-width:450px}.actions{display:flex;align-items:center;gap:22px;flex-wrap:wrap;margin:24px 0 16px;font-size:12px}.button{display:inline-flex;gap:25px;align-items:center;padding:11px 16px;background:var(--green);color:white;border-radius:5px;text-decoration:none}.audience{font-size:11px;color:var(--muted)}.specimen{background:#edf0e9;padding:26px 22px 20px;border-radius:3px;min-width:0}.specimen-title{font:13px Georgia,serif;color:#62745c;margin-bottom:20px}.paper{background:white;padding:21px 18px;border:1px solid #dce2d5;box-shadow:0 10px 22px #5260470b;transform:rotate(-2deg);position:relative}.paper-meta{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);padding-bottom:12px;border-bottom:1px solid var(--line)}.paper-name{font-size:14px;font-weight:600;margin:15px 0 2px}.paper-url{font-size:10px;color:var(--muted);overflow-wrap:anywhere}.proof{display:grid;gap:9px;font-size:11px;margin-top:17px}.proof div{display:flex;align-items:center;gap:9px}.tick{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--wash);color:var(--green);font-size:11px;flex-shrink:0}.proof small{margin-left:auto;font-size:10px;color:var(--muted)}.stamp{position:absolute;right:5px;bottom:-16px;padding:8px 12px;background:var(--green);color:white;font-size:10px;transform:rotate(2deg)}.specimen-foot{text-align:right;color:var(--muted);font-size:10px;margin-top:32px}.principles{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;border-block:1px solid var(--line);padding:21px 0}.principles p{font-size:12px;color:var(--muted);margin:0}.principles b{display:block;font-weight:500;font-size:13px;color:var(--ink);margin-bottom:4px}.principles small{font:11px Georgia,serif;color:var(--warm);display:block;margin-bottom:7px}section{padding-top:48px;scroll-margin-top:18px}.section-head{display:flex;gap:19px;align-items:flex-start;margin-bottom:25px}.number{font:15px Georgia,serif;color:var(--warm);padding-top:8px}h2{font-size:23px;line-height:1.55;letter-spacing:.015em;font-weight:500;margin:0 0 8px}h3{font-size:15px;font-weight:600;line-height:1.6;margin:0 0 8px}p{margin:0 0 15px}.section-head p{font-size:13px;color:var(--muted);margin:0}.section-body{margin-left:38px;font-size:14px}.feature-list{display:grid;grid-template-columns:1fr 1fr;gap:0 28px}.feature-list article{border-top:1px solid var(--line);padding:17px 0}.feature-list article p{font-size:13px;color:var(--muted);margin:0}.note{border-left:2px solid #aabb9e;padding:4px 0 4px 15px;font-size:13px;color:var(--muted);margin:22px 0}.note strong{font-weight:600;color:var(--green)}.note.warning{border-color:#bca777}.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:5px;margin:20px 0;background:white}table{width:100%;border-collapse:collapse;font-size:13px;line-height:1.8}th,td{text-align:left;vertical-align:top;padding:13px 14px;border-bottom:1px solid var(--line)}th{font-weight:500;color:var(--green);background:var(--wash)}tr:last-child td{border-bottom:0}.comparison{min-width:570px}.comparison th:first-child{width:20%}.comparison td:last-child{background:#f7f9f4}.flow{display:grid;grid-template-columns:repeat(4,1fr);background:white;border:1px solid var(--line);border-radius:5px;overflow:hidden;margin:22px 0}.flow div{padding:15px 12px;color:var(--muted);font-size:12px}.flow div+div{border-left:1px solid var(--line)}.flow small{font-size:10px;color:var(--warm);display:block;letter-spacing:.08em}.flow b{display:block;font-size:13px;font-weight:500;color:var(--ink);margin:4px 0}.criteria{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:20px 0}.criteria div{border-top:2px solid #bcc9b3;padding:13px 0;font-size:12px;color:var(--muted)}.criteria b{display:block;font-size:14px;color:var(--green);font-weight:500;margin-bottom:5px}.setup{border:1px solid var(--line);background:white;border-radius:6px;overflow:hidden;margin:22px 0}.setup-header{display:flex;align-items:center;flex-wrap:wrap;gap:22px;border-bottom:1px solid var(--line);padding:17px 23px 0}.setup-title{margin-right:auto;font-size:12px;color:var(--muted);padding-bottom:14px}.tablist{display:none;gap:22px}.enhanced .tablist{display:flex}.tab{background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);font-size:13px;padding:0 0 14px}.tab[aria-selected=true]{color:var(--green);border-color:var(--green)}.tabpanel{padding:23px}.tabpanel[hidden]{display:none}.platform-title{font-size:14px;color:var(--green);border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:20px}.enhanced .platform-title{display:none}.steps{list-style:none;margin:0;padding:0;counter-reset:step}.steps>li{position:relative;padding-left:34px;margin-bottom:27px;counter-increment:step}.steps>li:last-child{margin-bottom:0}.steps>li:before{content:counter(step);position:absolute;left:0;top:2px;border:1px solid #d5ddcc;border-radius:50%;width:22px;height:22px;display:grid;place-items:center;font-size:11px;color:#637659}.steps p{color:var(--muted);font-size:13px;margin-bottom:10px}.command{border:1px solid #e0e6d9;background:#f6f8f3;border-radius:4px;overflow:hidden;margin:12px 0}.command-top{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 12px;border-bottom:1px solid #e0e6d9;font-size:11px;color:var(--muted)}.copy{display:none;padding:3px 6px;border:0;background:none;color:var(--green);font-size:11px}.enhanced .copy{display:block}.command pre{margin:0;padding:14px 15px;overflow-x:auto;white-space:pre;font:12px/1.9 ui-monospace,SFMono-Regular,Consolas,monospace;color:#3d5135}.command pre code{padding:0;background:none;font-size:inherit}.success{color:var(--green)!important;font-size:12px!important}.success:before{content:"✓ ";padding-right:4px}code{background:#eef1e9;border-radius:3px;padding:2px 4px;font-size:.88em;overflow-wrap:anywhere}.subsection{margin:26px 0}details{border-top:1px solid var(--line)}details:last-child{border-bottom:1px solid var(--line)}summary{cursor:pointer;padding:16px 0;font-size:14px;font-weight:500}details>div{padding:0 0 18px;font-size:13px;color:var(--muted)}details p:last-child{margin-bottom:0}.outputs{display:grid;grid-template-columns:1fr 1fr;gap:0 28px}.outputs article{border-top:1px solid var(--line);padding:18px 0}.outputs p{font-size:13px;color:var(--muted);margin:0}.file-label{display:inline-block;font:11px ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--green);background:var(--wash);padding:5px 7px;border-radius:3px;margin-bottom:9px}.compact-list{padding-left:1.2em;color:var(--muted);font-size:13px}.compact-list li{margin:7px 0}.footer{margin-top:50px;border-top:1px solid var(--line);padding-top:22px;display:flex;justify-content:space-between;gap:22px;font-size:11px;color:var(--muted)}.mobile-toc{display:none}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:1100px){.layout{grid-template-columns:190px minmax(0,1fr)}aside{padding-inline:16px}main{padding-inline:32px}.hero{gap:25px}.specimen{padding-inline:15px}.proof small{display:none}}@media(max-width:820px){header{padding-inline:20px;height:60px}.header-links>a{display:none}.layout{display:block}aside{display:none}main{padding:25px 24px 30px}.mobile-toc{display:block;margin-top:24px}.mobile-toc summary{font-size:12px;padding:10px 0}.mobile-toc nav{display:grid;grid-template-columns:1fr 1fr;gap:7px 16px;padding-bottom:14px;font-size:12px}.hero{padding-top:27px}.section-body{margin-left:0}.section-head{gap:14px}.hero h1{font-size:30px}.section-head h2{font-size:22px}}@media(max-width:570px){.brand{font-size:11px}.badge{font-size:9px}.hero{grid-template-columns:1fr;padding-bottom:28px;gap:25px}.specimen{padding:24px;max-width:430px}.proof small{display:block}.principles{grid-template-columns:1fr;gap:15px}.principles small{float:left;width:29px;margin:3px 0 0}.principles b,.principles p{padding-left:29px}.feature-list,.outputs{grid-template-columns:1fr}.flow{grid-template-columns:1fr 1fr}.flow div:nth-child(3){border-left:0;border-top:1px solid var(--line)}.flow div:nth-child(4){border-top:1px solid var(--line)}.criteria{grid-template-columns:1fr;gap:0}.criteria div{padding:12px 0}.setup-header{padding-inline:17px}.tabpanel{padding:21px 16px}.steps>li{padding-left:30px}.command pre{font-size:11px;padding:12px}.section-head h2{font-size:20px}.footer{display:block}.footer p{margin-bottom:8px}section{padding-top:35px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}@media print{header,aside,.mobile-toc,.copy,.tablist,.actions{display:none!important}.layout{display:block}main{padding:0}.tabpanel[hidden]{display:block!important}body{background:white;font-size:11pt}.hero{display:block}.specimen{display:none}.section-body{margin:0}.command pre{white-space:pre-wrap;overflow-wrap:anywhere}.footer{margin-top:20px}}
+</style>
 </head>
 <body>
-  <a class="skip" href="#main">本文へ移動</a>
-  <header class="appbar">
-    <div class="appbar-inner">
-      <a class="brand" href="#top"><span class="brand-mark">✓</span><span>証拠付き営業リスト</span></a>
-      <span class="version">配布版 v1.1.4 · Mac / Windows</span>
-    </div>
-  </header>
-
-  <div class="layout" id="top">
-    <aside aria-label="目次">
-      <p class="toc-title">このガイド</p>
-      <nav class="toc">
-        <a href="#about">どんなSkill？</a>
-        <a href="#benefits">何ができる？</a>
-        <a href="#difference">なぜ信頼できる？</a>
-        <a href="#install">インストール</a>
-        <a href="#start">最初の使い方</a>
-        <a href="#scale">大量調査</a>
-        <a href="#output">受け取るもの</a>
-        <a href="#limits">できないこと</a>
-        <a href="#faq">困ったとき</a>
-      </nav>
-    </aside>
-
-    <main id="main">
-      <section id="about">
-        <p class="kicker">VERIFIED LEAD RESEARCH</p>
-        <h1>公式サイトの証拠付きで、営業候補を探すSkill</h1>
-        <p class="lede">売りたい商材、対象国、会いたい企業を伝えると、候補企業の公式サイトを確認し、なぜ候補に入れたのかまで残します。会社名やURLをAIの想像だけで作りません。</p>
-        <div class="meta-row"><span class="pill">Codex対応</span><span class="pill">Claude Code対応</span><span class="pill">最大1,000社</span><span class="pill">AI API契約不要</span><span class="pill">営業送信なし</span></div>
-        <div class="jump-row"><a class="button" href="#install">インストールする</a><a class="button secondary" href="#difference">普通のAIとの違い</a></div>
-        <div class="callout yellow"><strong>ひとことで言うと</strong>「会社をたくさん挙げるAI」ではなく、「会社を一社ずつ確かめるAI」です。</div>
-      </section>
-
-      <section id="benefits">
-        <h2>このSkillでできること</h2>
-        <p>抹茶や和牛だけでなく、売りたいものと営業目的を変えて使えます。</p>
-        <div class="feature-grid">
-          <article class="feature"><div class="feature-icon">聞</div><h3>条件を選択式で整理</h3><p>固定アンケートではなく、商材と回答に合わせて必要な質問だけを出します。</p></article>
-          <article class="feature"><div class="feature-icon">探</div><h3>海外の候補企業を発見</h3><p>輸入、卸、販売店、ホテル、工場、代理店、提携先などを探せます。</p></article>
-          <article class="feature"><div class="feature-icon">確</div><h3>公式サイトを確認</h3><p>トップ、会社概要、商品、卸売、問い合わせなどを一社最大5ページ確認します。</p></article>
-          <article class="feature"><div class="feature-icon">残</div><h3>証拠を一緒に保存</h3><p>会社名とURLだけでなく、公式サイトの原文、掲載ページ、確認日時を残します。</p></article>
-          <article class="feature"><div class="feature-icon">連</div><h3>公開連絡先を収集</h3><p>公開メールだけを取得。問い合わせフォームは普通に見つかった時だけ保存します。</p></article>
-          <article class="feature"><div class="feature-icon">分</div><h3>不確かな会社を分離</h3><p>証拠不足、対象外、取得不能を分け、無理に「合格」へ入れません。</p></article>
-          <article class="feature"><div class="feature-icon">続</div><h3>大量調査を途中から再開</h3><p>50候補ずつ記録し、停止しても重複なしで続きから調査できます。</p></article>
-        </div>
-        <div class="callout green"><strong>商材例</strong>食品、飲料、機械、素材、化粧品、日用品、法人向けサービス。B2Bの相手を公式サイトで確認できる商材に向いています。</div>
-      </section>
-
-      <section id="difference">
-        <h2>普通のAIリストより、なぜ信頼しやすいの？</h2>
-        <p>違いはAIモデルの名前ではなく、調べ方にあります。ChatGPTやClaudeへ一度に会社名を尋ねるだけでは、記憶、推測、古い情報が混ざることがあります。</p>
-        <table class="comparison">
-          <thead><tr><th>確認点</th><th>普通のAIリスト</th><th>このSkill</th></tr></thead>
-          <tbody>
-            <tr><td>会社名・URL</td><td class="risk">AIの記憶や推測が混ざることがある</td><td class="good">Webで候補を見つけ、公式サイトを取得</td></tr>
-            <tr><td>営業先との適合</td><td>「それらしい会社」を文章から判断</td><td class="good">AIの対象判定と3種類の公式サイト証拠を両方必須にする</td></tr>
-            <tr><td>メール</td><td class="risk">命名規則から推測する場合がある</td><td class="good">ページに公開されたメールだけ</td></tr>
-            <tr><td>根拠</td><td>説明文だけで、あとから確認しにくい</td><td class="good">原文・URL・確認日時を保存</td></tr>
-            <tr><td>分からない時</td><td class="risk">空欄を埋めようとすることがある</td><td class="good">確認待ち・対象外・取得不能に分ける</td></tr>
-          </tbody>
-        </table>
-
-        <h3>嘘を入りにくくする5つの関門</h3>
-        <div class="pipeline" aria-label="検証の5工程">
-          <div class="pipe"><b>01</b><strong>候補を検索</strong><span>会社を記憶だけで挙げない</span></div>
-          <div class="pipe"><b>02</b><strong>公式サイト取得</strong><span>URLが実際に開けるか確認</span></div>
-          <div class="pipe"><b>03</b><strong>3証拠を探す</strong><span>商材・役割・市場活動</span></div>
-          <div class="pipe"><b>04</b><strong>原文を再確認</strong><span>証拠文がページ内にあるか検査</span></div>
-          <div class="pipe"><b>05</b><strong>人が最終確認</strong><span>正しい・間違いを記録</span></div>
-        </div>
-
-        <p>企業が合格するには、AIが競合・対象外ではないと判断したうえで、次の3つがすべて必要です。</p>
-        <div class="criteria"><div class="criterion"><strong>商材との関係</strong><br>扱う・使う・販売する</div><div class="plus">＋</div><div class="criterion"><strong>会社の役割</strong><br>輸入・卸・購入など</div><div class="plus">＋</div><div class="criterion"><strong>対象市場の活動</strong><br>販売・配送・顧客・拠点</div></div>
-        <div class="callout yellow"><strong>自動で格上げしない</strong>AIが競合や対象外として <code>review</code>／<code>rejected</code> にした会社は、3つの証拠があっても合格へ変更しません。さらに「メーカーを除外」などの条件は1項目ずつ確認し、未確認・該当・判断不能なら合格にしません。</div>
-      </section>
-
-      <section id="install">
-        <p class="kicker">SETUP</p>
-        <h2>はじめてのインストール</h2>
-        <p>Macはダブルクリック、WindowsはPowerShellから準備できます。最初だけ必要なブラウザ部品をダウンロードするため、通信環境により3〜10分ほどかかります。</p>
-        <div class="callout"><strong>先に必要なもの</strong>MacまたはWindows、インターネット、CodexまたはClaude Code、Python 3。CodexとClaude Codeは、使いたい方だけで大丈夫です。</div>
-        <div class="steps">
-          <div class="step"><h3>受け取ったフォルダを開く</h3><p>`verified-lead-research` というフォルダです。ZIPで受け取った場合は、まずダブルクリックして展開します。</p></div>
-          <div class="step"><h3>`INSTALL.command` をダブルクリック</h3><p>黒い画面が開きます。英語が表示されても、閉じずにそのまま待ってください。</p></div>
-          <div class="step"><h3>「完了しました」を待つ</h3><p>必要な部品とブラウザを準備し、CodexとClaude Codeから使える場所へSkillを置きます。</p></div>
-          <div class="step"><h3>アプリを開き直す</h3><p>最後にEnterキーを押して黒い画面を閉じ、CodexまたはClaude Codeを再起動します。</p></div>
-          <div class="step"><h3>新しい会話で依頼する</h3><p>下の依頼文をコピーして試します。Skillが質問を始めれば成功です。</p></div>
-        </div>
-        <div class="callout yellow"><strong>Macに止められたら</strong>`INSTALL.command` を右クリック →「開く」→ もう一度「開く」。知らない配布元のファイルを開く警告が出た時だけ、この操作をします。</div>
-
-        <details><summary>WindowsでClaude Codeを使いたい</summary><div><p>ZIPを展開するかGitHubから取得し、`verified-lead-research` フォルダでPowerShellを開きます。次を上から順に実行します。</p><div class="codebox"><button class="copy" type="button">コピー</button><pre>py -3 -m venv .venv
+<a class="skip" href="#main">本文へ移動</a>
+<header><a class="brand" href="#top"><span class="mark" aria-hidden="true">✓</span>Verified Lead Research</a><div class="header-links"><a href="#install">セットアップ</a><a href="https://github.com/morioka1206/verified-lead-research">GitHub ↗</a><span class="badge">USER MANUAL</span></div></header>
+<div class="layout" id="top"><aside><p class="overline">Contents</p><nav class="toc" aria-label="目次"><a href="#about"><span>00</span>はじめに</a><a href="#benefits"><span>01</span>何ができる？</a><a href="#difference"><span>02</span>調べ方の違い</a><a href="#install"><span>03</span>インストール</a><a href="#start"><span>04</span>最初の使い方</a><a href="#scale"><span>05</span>大量調査と再開</a><a href="#output"><span>06</span>受け取るもの</a><a href="#limits"><span>07</span>できないこと</a><a href="#faq"><span>08</span>更新・困ったとき</a></nav><div class="side-note">Claude Codeをご利用の方へ。<br>Mac / Windows<br>Codexの案内も掲載しています。</div></aside>
+<main id="main"><div class="breadcrumb">Guide <span>/</span> 証拠付き営業リスト</div><details class="mobile-toc"><summary>目次を開く</summary><nav aria-label="モバイル目次"><a href="#about">はじめに</a><a href="#benefits">何ができる？</a><a href="#difference">調べ方の違い</a><a href="#install">インストール</a><a href="#start">最初の使い方</a><a href="#scale">大量調査と再開</a><a href="#output">受け取るもの</a><a href="#limits">できないこと</a><a href="#faq">更新・困ったとき</a></nav></details>
+<section id="about" style="padding-top:0"><div class="hero"><div><div class="eyebrow">RESEARCH, WITH EVIDENCE.</div><h1>次の取引先を、<br><em>確かな手がかり</em>から。</h1><p class="intro">会社名を挙げて終わりではなく、公式サイトへ確かめに行く。会社の存在と条件に合う根拠を一緒に集める、営業リスト作成Skillです。</p><div class="actions"><a class="button" href="#install">セットアップを見る <span aria-hidden="true">↗</span></a><a href="#difference">普通のAIとの違い</a></div><p class="audience">国内・海外の企業調査に / Claude Code・Codex対応</p></div><div class="specimen" aria-label="公式サイトの証拠を確認するイメージ。架空の会社によるサンプルです。"><div class="specimen-title">A lead, backed by evidence.</div><div class="paper"><div class="paper-meta"><span>COMPANY PROFILE</span><span>架空のサンプル</span></div><div class="paper-name">サンプル精密工業株式会社</div><div class="paper-url">https://manufacturer.example/</div><div class="proof"><div><span class="tick">✓</span>事業の内容<small>精密金属加工</small></div><div><span class="tick">✓</span>会社の役割<small>製造・受託加工</small></div><div><span class="tick">✓</span>対象地域の拠点<small>山梨県の工場</small></div></div><div class="stamp">✓ 根拠のある会社をリストへ</div></div><div class="specimen-foot">公式サイト → 証拠を保存 → 条件と照合</div></div></div><div class="principles"><div><small>01 /</small><b>名前だけで終わらない。</b><p>公式サイトを開き、内容まで確認。</p></div><div><small>02 /</small><b>「なぜ選んだか」が残る。</b><p>原文・URL・確認日時を保存。</p></div><div><small>03 /</small><b>件数のために、質を下げない。</b><p>確認できない会社を合格にしません。</p></div></div></section>
+<section id="benefits"><div class="section-head"><span class="number">01</span><div><h2>AIに、調べ方のルールを渡す。</h2><p>Skillは「仕事の手順書」と、その手順を助けるプログラムをまとめたものです。</p></div></div><div class="section-body"><p>独立したWebアプリではありません。いつものClaude CodeやCodexの会話から使い、検索・公式サイトの確認・証拠の保存を同じ流れで進めます。商材が未定でも「山梨県の製造業を一覧にしたい」のように依頼できます。</p><div class="feature-list"><article><h3>探す条件を、一緒に整理。</h3><p>商材・地域・会いたい会社・除外条件を質問します。食品、機械、ホテルなど、調べる内容に合わせて質問が変わります。</p></article><article><h3>国内・海外の会社を調査。</h3><p>輸入・卸・販売・製造・ホテル・代理店などが対象です。地域は県単位でも国単位でも設定できます。</p></article><article><h3>サイトを実際に取得。</h3><p>普通の取得を先に試し、必要な場合はPlaywrightで表示します。会社案内・商品・所在地など、1社最大5取得先で確認します。</p></article><article><h3>不確かさも、隠さない。</h3><p>根拠不足・対象外・取得不能を分けて記録。公開メールや明確な問い合わせ先は、見つかった場合だけ残します。</p></article><article><h3>証拠をあとから確認。</h3><p>短い日本語の会社概要と、元サイトの原文・証拠URL・確認日時を保存します。必要なら人の品質チェック表も作れます。</p></article><article><h3>大きな調査は、小分けに。</h3><p>大量調査は既定で50候補ずつ記録。同じ会社の重複を整理し、保存済みの続きから再開できます。</p></article></div><div class="note">例：アメリカの抹茶卸、タイの工業ネジ販売会社、イタリアの高級ホテル、日本の製造業や建設業。<strong>相手が新しい取引に応じるか、購入予算があるかまでは、サイトの情報だけでは分かりません。</strong></div></div></section>
+<section id="difference"><div class="section-head"><span class="number">02</span><div><h2>大切なのは、AIの名前より調べ方。</h2><p>通常のAIでも丁寧な調査はできます。このSkillは、確認の手順を毎回そろえます。</p></div></div><div class="section-body"><div class="table-wrap"><table class="comparison"><caption class="sr-only">単発のリスト生成とこのSkillの確認手順の比較</caption><thead><tr><th>確認点</th><th>会社名を挙げてもらうだけの場合</th><th>このSkillのルール</th></tr></thead><tbody><tr><td>会社とURL</td><td>記憶や推測、古い情報が混ざる可能性</td><td>検索で候補を見つけ、公式サイトを取得</td></tr><tr><td>条件との一致</td><td>説明がもっともらしくても、根拠が不明なことがある</td><td>AIの対象判定と、3種類のサイト上の根拠が必要</td></tr><tr><td>メール</td><td>推測しないよう別途指定が必要</td><td>公開された業務用メールだけ。空欄を許容</td></tr><tr><td>確かめ直す</td><td>会社名だけでは調査経緯が残らない</td><td>原文・URL・確認日時・判定理由を保存</td></tr><tr><td>分からない時</td><td>件数を埋めようとすることがある</td><td>確認待ち・対象外・取得不能に分ける</td></tr></tbody></table></div><div class="flow" aria-label="調査の流れ"><div><small>STEP 01</small><b>条件を相談</b>対象と除外を決める</div><div><small>STEP 02</small><b>候補を検索</b>重複を整理する</div><div><small>STEP 03</small><b>サイトを検証</b>根拠の原文も再確認</div><div><small>STEP 04</small><b>リストに保存</b>必要なら人も確認</div></div><h3>合格には、3種類の根拠が必要です。</h3><div class="criteria"><div><b>事業・商材との関係</b>扱う・使う・製造する・販売するなど。会社一覧なら、対象の事業を営んでいること。</div><div><b>会社の役割</b>卸、販売代理店、製造会社、施工会社など、今回探す相手であること。</div><div><b>対象地域との関係</b>拠点・販売・配送など、相談時に決めた地域条件を満たすこと。</div></div><p>プログラムは、引用した証拠文が取得した本文にあるかも確認します。AIが <code>accepted</code> と判断し、3種類の根拠がそろい、除外条件も確認できた会社だけが合格です。</p><div class="note warning"><strong>自動で合格へ格上げしません。</strong> AIが競合・対象外として <code>review</code> や <code>rejected</code> にした会社は、証拠がそろっても合格にしません。除外条件が未確認・該当・判断不能の会社も合格にしません。証拠不足なら判定を下げます。</div><p>これは誤りを減らし、確かめ直しやすくする仕組みです。サイトの記載自体が古い場合や、会社の役割を読み違える場合もあり、正確性を保証するものではありません。</p></div></section>
+<section id="install"><div class="section-head"><span class="number">03</span><div><h2>いつものClaude Codeに、追加する。</h2><p>ここからは、Claude Codeを既に使っている方のための導入手順です。</p></div></div><div class="section-body"><p>必要なものは、MacまたはWindows、インターネット、使える状態のClaude Code、Python 3です。必要な部品はプロジェクト専用の環境へ入れるので、普段のPython環境と分けて使えます。</p><div class="note"><strong>最初の1回だけ</strong> ブラウザ用の部品をダウンロードします。通信速度によって時間がかかるため、完了表示が出るまで待ってください。このSkill自体は外部AIのAPIキーを要求しません。Claude CodeやCodex側の利用契約・利用上限は別です。</div><h3>まず、フォルダを入手する。</h3><p><a href="https://github.com/morioka1206/verified-lead-research/archive/refs/heads/main.zip">配布用ZIPをダウンロード</a>して展開します。MacではZIPをダブルクリック、WindowsではZIPを右クリックして「すべて展開」を選びます。中に <code>GUIDE.html</code>、<code>skills</code>、<code>.claude-plugin</code> があるフォルダを使います。ZIP版のフォルダ名は <code>verified-lead-research-main</code> です。</p><p>既にGitで取得したフォルダがあれば、それを使って構いません。<a href="https://github.com/morioka1206/verified-lead-research">配布元と内容を確認</a>してから実行してください。</p>
+<div class="setup" data-tabs><div class="setup-header"><span class="setup-title">お使いのパソコンを選ぶ</span><div class="tablist" role="tablist" aria-label="Claude Code導入のOS"><button type="button" class="tab" role="tab" id="mac-tab" aria-controls="mac-panel" aria-selected="true">Mac</button><button type="button" class="tab" role="tab" id="win-tab" aria-controls="win-panel" aria-selected="false" tabindex="-1">Windows</button></div></div>
+<div class="tabpanel" role="tabpanel" id="mac-panel" aria-labelledby="mac-tab"><h3 class="platform-title">Macの手順</h3><ol class="steps"><li><h3>ターミナルで、展開したフォルダへ移動する</h3><p>Spotlight（⌘＋スペース）で「ターミナル」を検索して開きます。<code>cd</code> と半角スペースを入力し、Finderの展開済みフォルダをターミナルへドラッグして、Enterを押します。</p><p><code>cd</code> は「このフォルダで作業する」という指定です。以下は、そのフォルダへ移動した状態で実行します。</p></li><li><h3>Pythonが使えるか確認する</h3><div class="command"><div class="command-top"><span>ターミナルに入力 → Enter</span><button class="copy" type="button">コピー</button></div><pre><code>python3 --version</code></pre></div><p class="success">Python 3.x.x のようなバージョンが出れば次へ。</p><p>見つからなければ、<a href="https://www.python.org/downloads/macos/">Python公式サイト</a>からPython 3を導入し、ターミナルを開き直してください。</p></li><li><h3>必要な部品を準備する</h3><div class="command"><div class="command-top"><span>ターミナルに入力 → Enter</span><button class="copy" type="button">コピー</button></div><pre><code>python3 skills/verifying-sales-leads/scripts/bootstrap.py</code></pre></div><p>専用のPython環境、必要なライブラリ、Chromiumを準備します。英語の経過表示は正常です。</p><p class="success">最後に ready: …/.venv/bin/python と出て、入力待ちに戻れば成功です。</p></li><li><h3>ブラウザが裏側で動くか確認する</h3><div class="command"><div class="command-top"><span>ターミナルに入力 → Enter</span><button class="copy" type="button">コピー</button></div><pre><code>.venv/bin/python skills/verifying-sales-leads/scripts/check_browser.py --output runs/browser-diagnostic.json</code></pre></div><p class="success"><code>"status": "ok"</code> が出れば成功です。画面にブラウザが開かなくても正常です。</p></li><li><h3>このフォルダのPluginを読み込んで起動する</h3><div class="command"><div class="command-top"><span>ターミナルに入力 → Enter</span><button class="copy" type="button">コピー</button></div><pre><code>claude --plugin-dir .</code></pre></div><p class="success">Claude Codeの入力画面が開いたら、下の「Skillを呼び出す」へ進みます。</p></li></ol></div>
+<div class="tabpanel" role="tabpanel" id="win-panel" aria-labelledby="win-tab"><h3 class="platform-title">Windowsの手順</h3><ol class="steps"><li><h3>展開したフォルダでPowerShellを開く</h3><p>エクスプローラーで展開済みフォルダの中を開きます。上のアドレス欄（フォルダの場所が出る欄）へ <code>powershell</code> と入力し、Enterを押します。そのフォルダで作業する青色または黒色の画面が開きます。</p></li><li><h3>Pythonが使えるか確認する</h3><div class="command"><div class="command-top"><span>PowerShellに入力 → Enter</span><button class="copy" type="button">コピー</button></div><pre><code>py -3 --version</code></pre></div><p class="success">Python 3.x.x と出れば次へ。</p><p>見つからなければ<a href="https://www.python.org/downloads/windows/">Python公式サイト</a>からPython 3を導入し、PowerShellを開き直します。<code>py</code> が使えず <code>python --version</code> がPython 3を示す環境では、次の最初の行を <code>python -m venv .venv</code> に置き換えます。</p></li><li><h3>必要な部品を準備する</h3><p>下の4行を上から1行ずつ実行してください。エラーが出たら次へ進まず、「困ったとき」を確認します。</p><div class="command"><div class="command-top"><span>PowerShellに1行ずつ入力</span><button class="copy" type="button">コピー</button></div><pre><code>py -3 -m venv .venv
 $env:PLAYWRIGHT_BROWSERS_PATH = "$PWD\.playwright-browsers"
 .\.venv\Scripts\python.exe -m pip install --requirement .\skills\verifying-sales-leads\requirements.txt
-.\.venv\Scripts\python.exe -m playwright install chromium
-claude --plugin-dir .</pre></div><p>Claude Codeで <code>/verified-lead-research:verifying-sales-leads</code> を選びます。さらに詳しい説明は <a href="docs/windows-claude-code.md">Windows版セットアップ手順</a> にあります。</p></div></details>
-
-        <details><summary>Windowsでブラウザが動くか確認したい</summary><div><div class="codebox"><button class="copy" type="button">コピー</button><pre>$env:PLAYWRIGHT_BROWSERS_PATH = "$PWD\.playwright-browsers"
-.\.venv\Scripts\python.exe -m unittest tests\test_playwright_dynamic.py -v</pre></div>最後に <code>OK</code> と表示されれば合格です。ブラウザは裏側で動くため、画面が開かないのが正常です。</div></details>
-
-        <details><summary>調査前に、ブラウザがちゃんと動くか確かめる</summary><div><p>企業のサイトを調べる前に、PCの中だけで起動と文字の表示を試せます。Macは、配布フォルダを開いたターミナルで次を実行します。</p><div class="codebox"><button class="copy" type="button">コピー</button><pre>.venv/bin/python skills/verifying-sales-leads/scripts/check_browser.py --output runs/browser-diagnostic.json</pre></div><p>WindowsのPowerShellでは次を実行します。</p><div class="codebox"><button class="copy" type="button">コピー</button><pre>.\.venv\Scripts\python.exe skills\verifying-sales-leads\scripts\check_browser.py --output runs\browser-diagnostic.json</pre></div><p><code>"status": "ok"</code> なら成功です。<code>environment_error</code> なら診断ファイルをAIに見せてください。PC側の起動不良だけで、会社が存在しないとは判断しません。通常の固定版Chromiumを裏側で動かし、安全設定は解除しません。</p><p>会社案内の奥の所在地や画像ボタン、フレームも最大5取得先の中で確認します。対応している共用ホームページでは会社別のURLを区別し、隣の会社の情報を混ぜません。すべてのサイトに対応できるわけではなく、合格条件はこれまでと同じです。</p></div></details>
-
-        <div class="tabs">
-          <div class="tablist" role="tablist" aria-label="利用環境">
-            <button class="tab" role="tab" aria-selected="true" aria-controls="codex-panel" id="codex-tab">Codex</button>
-            <button class="tab" role="tab" aria-selected="false" aria-controls="claude-panel" id="claude-tab">Claude Code</button>
-          </div>
-          <div class="tabpanel" role="tabpanel" id="codex-panel" aria-labelledby="codex-tab">
-            <p>Codexを完全に終了して開き直し、新しいタスクを作ります。特別なコマンドは不要です。</p>
-          </div>
-          <div class="tabpanel" role="tabpanel" id="claude-panel" aria-labelledby="claude-tab" hidden>
-            <p>Claude Codeを終了して開き直します。Pluginとして開いた場合は <code>/verified-lead-research:verifying-sales-leads</code>、個人用Skillとして入れた場合は <code>/verifying-sales-leads</code> と入力できます。</p>
-          </div>
-        </div>
-
-        <details><summary>Python 3が見つからないと言われた</summary><div><a href="https://www.python.org/downloads/macos/">Python公式サイト</a>からPython 3をインストールし、その後もう一度 `INSTALL.command` を開いてください。</div></details>
-        <details><summary>黒い画面を使わず、自分でインストールしたい</summary><div><div class="codebox"><button class="copy" type="button">コピー</button><pre>cd /受け取った場所/verified-lead-research
-python3 skills/verifying-sales-leads/scripts/bootstrap.py
-.venv/bin/python skills/verifying-sales-leads/scripts/install_skill.py</pre></div></div></details>
-        <details><summary>管理者としてClaude Code Pluginを直接テストしたい</summary><div><div class="codebox"><button class="copy" type="button">コピー</button><pre>claude --plugin-dir /受け取った場所/verified-lead-research</pre></div>この配布フォルダにはClaude Code用とCodex用のPlugin設定が両方入っています。</div></details>
-      </section>
-
-      <section id="start">
-        <h2>最初の使い方</h2>
-        <p>新しい会話へ、売りたいものと国を普通の日本語で書きます。</p>
-        <div class="codebox"><button class="copy" type="button">コピー</button><pre>日本産の業務用抹茶をアメリカへ売りたいです。
-輸入会社と卸会社の候補を、公式サイトの証拠付きで探してください。</pre></div>
-        <p>すぐには検索せず、Skillが選択式で質問します。質問は固定ではありません。食品なら業務用・小売用、機械なら代理店・導入企業など、今回の結果を変える内容だけを聞きます。</p>
-        <div class="callout green"><strong>検索が始まるタイミング</strong>最後に条件が一枚で表示されます。内容を確認して「この条件で調査を開始」を選ぶと、会社探しが始まります。</div>
-        <h3>ほかの依頼例</h3>
-        <ul><li>和牛をヨーロッパへ販売するため、食肉輸入会社を探す</li><li>包装機械を東南アジアへ販売するため、販売代理店を探す</li><li>日本の化粧品原料を韓国へ販売するため、メーカーと卸会社を探す</li><li>法人向けサービスの現地パートナー候補を探す</li></ul>
-      </section>
-
-      <section id="scale">
-        <p class="kicker">LARGE RESEARCH</p>
-        <h2>500社でも、50候補ずつ安全に進める</h2>
-        <p>大きな依頼を一度に処理せず、小さなまとまりに分けます。各回が終わるたびにデータベースへ保存するので、PCや会話を閉じても続きから再開できます。</p>
-        <table class="comparison">
-          <thead><tr><th>モード</th><th>標準調査</th><th>大量調査</th></tr></thead>
-          <tbody>
-            <tr><td>合格目標</td><td>5〜50社</td><td class="good">51〜1,000社</td></tr>
-            <tr><td>1回の確認数</td><td>必要数を順番に確認</td><td class="good">初期値は50候補</td></tr>
-            <tr><td>候補の上限</td><td>最大100社</td><td>最大5,000社</td></tr>
-            <tr><td>途中保存</td><td>実行結果を保存</td><td class="good">SQLiteへ毎回保存し再開可能</td></tr>
-          </tbody>
-        </table>
-        <div class="pipeline" aria-label="大量調査の流れ">
-          <div class="pipe"><b>01</b><strong>候補を追加</strong><span>検索で見つけた公式URL</span></div>
-          <div class="pipe"><b>02</b><strong>50候補を確認</strong><span>一社ずつ同じ合格条件</span></div>
-          <div class="pipe"><b>03</b><strong>途中保存</strong><span>判定と証拠をDBへ記録</span></div>
-          <div class="pipe"><b>04</b><strong>重複を除く</strong><span>同じ公式ドメインは再調査しない</span></div>
-          <div class="pipe"><b>05</b><strong>次の50候補</strong><span>必要件数まで繰り返す</span></div>
-        </div>
-        <div class="callout green"><strong>500社を集める例</strong>候補上限は2,500社を目安に設定します。500社に届いた時点、または候補上限を確認した時点で終了します。</div>
-        <div class="callout yellow"><strong>品質ルールは同じ</strong>大量調査でも、AIの対象判定と、商材・会社の役割・対象市場の活動という3種類の証拠が両方そろった会社だけを合格にします。数を増やすために条件はゆるめません。</div>
-      </section>
-
-      <section id="output">
-        <h2>最後に受け取るもの</h2>
-        <div class="output">
-          <article class="output-card"><h3>leads.xlsx</h3><p>営業担当が最初に開く、すっきりした全件リスト。</p><ul><li>会社名と公式URL</li><li>会社種別と短い概要</li><li>公開メール</li><li>商材との関係</li><li>判定欄や確認メモは表示しない</li></ul></article>
-          <article class="output-card"><h3>品質チェック表</h3><p>希望した時だけ作る、営業リストとは別の確認表。</p><ul><li>既定は代表的な10社</li><li>Google SheetsまたはExcel</li><li>正しい／間違いの選択欄</li><li>3種類の証拠と証拠URL</li><li>複数人の同時確認にも対応</li></ul></article>
-          <article class="output-card"><h3>leads.csv</h3><p>別のシステムへ渡しやすい日本語データ。</p><ul><li>会社名と公式URL</li><li>公開メール</li><li>短い会社概要</li><li>証拠URL</li></ul></article>
-          <article class="output-card"><h3>audit.json</h3><p>あとから判定を確かめる記録。</p><ul><li>全候補と判定</li><li>公式サイトの原文</li><li>証拠ページ</li><li>確認日時</li><li>不確かな点</li></ul></article>
-          <article class="output-card"><h3>research.sqlite3</h3><p>大量調査の途中経過を覚える台帳。</p><ul><li>調査済み・未調査の候補</li><li>バッチ番号と進捗</li><li>重複を防ぐ公式ドメイン</li><li>通常は開かなくてよい内部ファイル</li></ul></article>
-          <article class="output-card"><h3>summary.json</h3><p>いまどこまで進んだかを示す記録。</p><ul><li>確認済み候補数</li><li>合格会社数</li><li>残りの目標数</li><li>次にすること</li></ul></article>
-        </div>
-        <div class="callout green"><strong>品質チェックはリスト完成後に選べます</strong>10社だけ確認、全件確認、今回はしない、から選びます。10社は先頭からではなく、判断が難しい会社と異なる会社種別を混ぜます。9社以上が正しければ簡易チェックは合格、8社以下なら20社または全件へ広げます。</div>
-        <p style="margin-top:18px">最初の抹茶・アメリカ実験では、37候補を確認し、3証拠がそろった30社を出力しました。利用者が30社すべての公式URLを確認し、30社すべてを正しいと判定しました。</p>
-        <div class="result-line"><div><strong>37</strong><span>公式サイト確認</span></div><div><strong>30</strong><span>3証拠で合格</span></div><div><strong>30 / 30</strong><span>人の確認で正しい</span></div></div>
-      </section>
-
-      <section id="limits">
-        <h2>このSkillがしないこと</h2>
-        <ul><li>会社名、URL、メールアドレスを想像して埋める</li><li>問い合わせフォームや営業メールを送信する</li><li>CAPTCHAやBot対策を回避する</li><li>問い合わせフォームだけを探すため、無制限にクリックする</li><li>公式サイトだけを根拠に、法人登記済みだと断定する</li></ul>
-        <div class="callout red"><strong>目標件数に届かないことがあります</strong>証拠が足りない時は、数を埋めるために合格条件をゆるめません。不足数と理由を報告します。</div>
-      </section>
-
-      <section id="faq">
-        <h2>困ったとき</h2>
-        <details><summary>インストール後もSkillが始まりません</summary><div>CodexまたはClaude Codeを完全に終了し、開き直してから新しい会話を作ってください。古い会話では新しいSkillが読み込まれないことがあります。</div></details>
-        <details><summary>アップデートはどうしますか？</summary><div>新しい配布フォルダへ入れ替え、もう一度 `INSTALL.command` を開きます。このインストーラーが以前に置いたファイルだけを更新します。</div></details>
-        <details><summary>ChatGPTやClaudeのAPI契約は必要ですか？</summary><div>このSkillをCodexまたはClaude Codeの会話内で使う段階では、別のAI API契約は不要です。将来、独立したWebアプリとして自動運転する場合は別途実行基盤が必要です。</div></details>
-        <details><summary>問い合わせフォームが空欄でも大丈夫？</summary><div>大丈夫です。フォーム探索は補助機能です。フォームだと明確に確認できた時だけ保存し、分からない場合は空欄にします。会社の合否は、AIの対象適合判定と、商材・会社の役割・対象市場の活動という3種類の証拠で決まります。</div></details>
-        <details><summary>ほかの人と一緒に確認できますか？</summary><div>できます。品質チェックを選んだ後、GoogleスプレッドシートまたはExcelを選びます。Google Sheetsなら複数人で同時に「正しい／間違い」とメモを入力できます。共有相手や公開範囲は、持ち主が決めます。</div></details>
-      </section>
-
-      <footer>証拠付き営業リスト · 配布版 v1.1.4 · 2026-09-26</footer>
-    </main>
-  </div>
-
-  <script>
-    document.querySelectorAll('.copy').forEach((button) => {
-      button.addEventListener('click', async () => {
-        const text = button.parentElement.querySelector('pre').innerText;
-        try {
-          await navigator.clipboard.writeText(text);
-          button.textContent = 'コピー済み';
-          setTimeout(() => button.textContent = 'コピー', 1600);
-        } catch (_) {
-          button.textContent = '選択してコピー';
-        }
-      });
-    });
-
-    const tabs = document.querySelectorAll('[role="tab"]');
-    tabs.forEach((tab) => tab.addEventListener('click', () => {
-      tabs.forEach((item) => {
-        const selected = item === tab;
-        item.setAttribute('aria-selected', String(selected));
-        document.getElementById(item.getAttribute('aria-controls')).hidden = !selected;
-      });
-    }));
-  </script>
+.\.venv\Scripts\python.exe -m playwright install chromium</code></pre></div><p>専用環境を作り、ライブラリとChromiumを入れます。<code>Activate.ps1</code> の実行や、PowerShellの実行ポリシー変更は不要です。</p><p class="success">各行でエラーがなく、ブラウザのダウンロードが終わって入力待ちに戻れば次へ。</p></li><li><h3>ブラウザが裏側で動くか確認する</h3><div class="command"><div class="command-top"><span>PowerShellに入力 → Enter</span><button class="copy" type="button">コピー</button></div><pre><code>.\.venv\Scripts\python.exe skills\verifying-sales-leads\scripts\check_browser.py --output runs\browser-diagnostic.json</code></pre></div><p class="success"><code>"status": "ok"</code> が出れば成功です。画面にブラウザが開かなくても正常です。</p></li><li><h3>このフォルダのPluginを読み込んで起動する</h3><div class="command"><div class="command-top"><span>PowerShellに入力 → Enter</span><button class="copy" type="button">コピー</button></div><pre><code>claude --plugin-dir .</code></pre></div><p class="success">Claude Codeの入力画面が開いたら、下の「Skillを呼び出す」へ進みます。</p></li></ol></div></div>
+<div class="subsection"><h3>Skillを呼び出す — ここからはClaude Codeに入力</h3><p>ターミナルの通常の入力欄ではなく、起動したClaude Codeの会話欄に次を入力します。</p><div class="command"><div class="command-top"><span>Claude Codeに入力 → Enter</span><button class="copy" type="button">コピー</button></div><pre><code>/verified-lead-research:verifying-sales-leads</code></pre></div><p class="success">調査したい条件を聞かれれば、読み込みは成功です。</p><div class="note warning"><strong>この方法は、その起動中だけPluginを読み込みます。</strong> 永続的なマーケットプレイスインストールではありません。次回も同じフォルダで <code>claude --plugin-dir .</code> を実行してください。末尾の <code>.</code> は「いま開いているフォルダ」の意味です。フォルダを削除しないでください。</div></div>
+<details><summary>Macのダブルクリック導入と、個人用Skill登録について</summary><div><p>Macには <code>INSTALL.command</code> も同梱しています。ダブルクリックすると部品の準備に続いて、Codex用の管理コピーとClaude Code用のリンクを個人用Skillフォルダへ登録します。登録後はアプリを開き直してください。</p><p>Claude Codeの個人用Skillは <code>/verifying-sales-leads</code> で呼び出します。Plugin方式の長いコマンドとは別です。二重導入しないよう、どちらか一方の方式を選んでください。</p><p>macOSの警告で実行できない場合は、保護機能を無効化せず、配布元とファイルの内容を確認してください。不明な警告を無理に解除する必要はありません。上記の手動準備とPlugin方式も選べます。</p></div></details>
+<details><summary>Codexでも使いたい（Macの個人用Skill登録）</summary><div><p>上のMac手順で部品を準備したあと、同じフォルダで次を実行します。Codex用コピーだけを登録します。</p><div class="command"><div class="command-top"><span>ターミナルに入力</span><button class="copy" type="button">コピー</button></div><pre><code>.venv/bin/python skills/verifying-sales-leads/scripts/install_skill.py --codex-only</code></pre></div><p>Codexを開き直し、新しい会話で「verifying-sales-leadsを使って、会社を調べたい」と依頼します。Claude Codeと共通の調査処理・証拠形式を使いますが、別アプリへの自動導入ではありません。</p></div></details>
+<p style="font-size:12px;margin-top:18px">参考：<a href="https://code.claude.com/docs/en/plugins">Claude Code公式のPlugin説明</a> · <a href="https://github.com/morioka1206/verified-lead-research/blob/main/docs/windows-claude-code.md">Windowsの補足手順</a></p><p style="font-size:12px">WindowsでPluginとブラウザを試験した記録はありますが、最新の全変更をWindows実機で再確認したことを意味しません。各PCでブラウザ診断を実行してください。</p></div></section>
+<section id="start"><div class="section-head"><span class="number">04</span><div><h2>最初は、日本語で依頼するだけ。</h2><p>条件を相談して、最後に確認してから検索へ進みます。</p></div></div><div class="section-body"><div class="command"><div class="command-top"><span>Skillを呼び出したあとの会話欄に入力</span><button class="copy" type="button">コピー</button></div><pre><code>日本産の業務用抹茶をアメリカへ売りたいです。
+輸入会社と卸会社の候補を、公式サイトの証拠付きで探してください。</code></pre></div><p>すぐに検索せず、商材・対象地域・会社の役割・除外条件・必要件数を聞き取ります。質問は固定ではありません。食品なら用途や競合の扱い、地域の会社一覧なら「本社だけか、工場や支店も含むか」など、結果を変える点を確認します。</p><div class="note"><strong>検索が始まるタイミング</strong> 最後にまとめた条件を読み、「この条件で調査を開始」と伝えると会社探しへ進みます。新しい業種では、まず10社の小さな調査をおすすめします。</div><h3>ほかにも、こんな依頼ができます。</h3><ul class="compact-list"><li>山梨県に本社または工場がある製造業の会社を一覧にしたい</li><li>工業用ネジをタイへ販売するため、卸・販売会社を探したい</li><li>日本の枕を提案するため、イタリアの独立系高級ホテルを探したい</li><li>包装機械の海外販売代理店や、法人向けサービスの提携先を探したい</li></ul></div></section>
+<section id="scale"><div class="section-head"><span class="number">05</span><div><h2>大きな調査も、50候補ずつ。</h2><p>件数を増やしても、合格の基準は同じです。</p></div></div><div class="section-body"><div class="table-wrap"><table><thead><tr><th>モード</th><th>合格の目標</th><th>確認候補の上限</th></tr></thead><tbody><tr><td>標準調査</td><td>5〜50社</td><td>最大100候補</td></tr><tr><td>大量調査</td><td>51〜1,000社</td><td>最大5,000候補</td></tr></tbody></table></div><p>大量調査は既定で50候補ずつ進め、判定と証拠を <code>research.sqlite3</code> へ保存します。例として500社の依頼なら、候補上限を2,500社程度に設定し、目標または候補上限に達した時点で終了します。</p><div class="flow" aria-label="大量調査の処理"><div><small>01</small><b>50候補を確認</b>一社ずつ同じ基準</div><div><small>02</small><b>台帳へ保存</b>判定と原文証拠</div><div><small>03</small><b>重複を整理</b>会社の単位で確認</div><div><small>04</small><b>次のまとまりへ</b>目標か上限で終了</div></div><h3>途中でやめたら、どうする？</h3><p>元のプロジェクトフォルダを開き直し、保存された <code>runs/</code> の調査フォルダ名をAIに伝えて「この調査を続きから再開して」と依頼します。台帳と途中結果は移動・削除しないでください。閉じている間も自動で調査が進むわけではありません。</p><div class="note warning"><strong>1,000社は目標であって、取得保証ではありません。</strong> 公式サイトや必要な証拠が見つからなければ、確認できた件数と不足理由を報告します。1,000社を超える調査を別実行へ分ける場合も、既存リストとの重複確認と条件の再確認が必要です。</div></div></section>
+<section id="output"><div class="section-head"><span class="number">06</span><div><h2>使う表は、シンプルに。</h2><p>営業用の一覧と、品質確認のための記録を分けます。</p></div></div><div class="section-body"><p>結果はプロジェクト内の <code>runs/調査フォルダ/</code> に保存します。まずは <code>leads.xlsx</code> を開けば大丈夫です。</p><div class="outputs"><article><span class="file-label">leads.xlsx</span><h3>営業に使う全件リスト。</h3><p>会社名、公式URL、会社種別、短い日本語の概要、見つかった公開メールなど。判定欄・確認メモ・大きなタイトル行は入れません。見出しの固定と絞り込みができます。</p></article><article><span class="file-label">leads.csv</span><h3>別のツールへ渡すデータ。</h3><p>会社情報を日本語の項目で保存します。Excel以外のシステムへ取り込む場合に使えます。メールや問い合わせ先が空欄でも、推測で埋めません。</p></article><article><span class="file-label">audit.json</span><h3>「なぜ選んだか」の記録。</h3><p>合格以外も含む全候補、判定理由、元サイトの原文、証拠URL、確認日時を保存します。普段は開かず、疑問がある時にAIへ渡して確認できます。</p></article><article><span class="file-label">quality-review.xlsx / Google Sheets</span><h3>希望した場合だけ、確認用の表。</h3><p>営業リストとは別に、正しい・間違いとメモを入力できます。10社だけ、全件、今回はしない、から選べます。Google Sheetsへの直接作成は別途接続・認証が必要です。</p></article><article><span class="file-label">research.sqlite3</span><h3>大量調査の途中経過。</h3><p>調査済み・未調査の候補、重複整理、進捗を覚える台帳です。通常は開く必要はありませんが、再開するために残しておきます。</p></article><article><span class="file-label">summary.json</span><h3>いま、どこまで進んだか。</h3><p>確認済み候補数、合格数、目標までの残り、次の作業を確認するための記録です。</p></article></div><div class="note"><strong>品質チェックは任意です。</strong> 10社を確認する場合、先頭10社ではなく、判断が難しい会社と種類の違う代表例を混ぜます。9社以上が正しければ簡易チェックは合格、8社以下なら20社または全件へ広げます。これは全件の精度を証明する統計調査ではありません。迷う判定は勝手に「正しい」にせず、理由を確認します。</div><p>Googleスプレッドシートを作っただけでは、他の人へ自動公開されません。共有相手と範囲は持ち主が決めます。</p></div></section>
+<section id="limits"><div class="section-head"><span class="number">07</span><div><h2>できることと、しないこと。</h2><p>連絡する前の、会社探しと確認のための道具です。</p></div></div><div class="section-body"><ul class="compact-list"><li>会社名・URL・メールを想像で埋めません。</li><li>問い合わせフォームや営業メールを送信しません。営業文もこの調査の成果物には含めません。</li><li>Bot対策やCAPTCHAを突破しません。読めないサイトは取得不能・確認待ちとして扱います。</li><li>問い合わせフォームは、通常の調査で明確に見つかった場合だけ記録し、クリックして深追いしません。</li><li>非公開ページやログインが必要な情報を集めません。robots.txt、アクセス間隔、安全なURLの制約を守ります。</li><li>会社サイトの表示だけで、法人登記・許認可・認証の現在の有効性を公的に証明しません。</li><li>マーケットプレイスの出店者一覧や、フランチャイズ各店舗の収集は対象外です。</li></ul><div class="note warning"><strong>取得不能 ≠ 会社が存在しない。</strong> PCのブラウザ起動不良、サイトの制限、情報不足は分けて扱います。正確さを犠牲にして目標件数を埋めません。</div></div></section>
+<section id="faq"><div class="section-head"><span class="number">08</span><div><h2>更新と、困ったときの案内。</h2><p>分からない時は、エラーの文章を残して相談してください。</p></div></div><div class="section-body">
+<details><summary>次回は、どこから起動すればよい？</summary><div><p>元のフォルダでターミナル／PowerShellを開き、<code>claude --plugin-dir .</code> を実行します。初回の準備を毎回やり直す必要はありません。Claude Codeが開いたら <code>/verified-lead-research:verifying-sales-leads</code> を呼び出します。</p><p>個人用Skill登録を選んだ場合は <code>/verifying-sales-leads</code> です。Plugin方式と混同しないでください。</p></div></details>
+<details><summary>Skillが見つからない・質問が始まらない</summary><div><p>現在のフォルダに <code>.claude-plugin/plugin.json</code> と <code>skills</code> があるか確認します。1段外のフォルダや、ZIPの中のままでは正しく読み込めません。Claude Codeを終了して、正しいフォルダで <code>claude --plugin-dir .</code> から開き直してください。</p><p><code>claude</code> が見つからない場合は、普段Claude Codeを起動しているターミナル環境で試します。組織の設定でPluginが禁止されている場合は、管理者へ確認してください。</p></div></details>
+<details><summary>ブラウザ診断が environment_error になった</summary><div><p><code>runs/browser-diagnostic.json</code> とエラー全文をAIへ渡してください。個別の会社を調べる前に、PC側でブラウザが動くかを直します。安全設定の解除や <code>--no-sandbox</code> による回避は勧めません。</p><p>Windowsでは、上の準備手順でブラウザ保存先を指定してからChromiumを入れたか確認します。Macではbootstrapを実行したフォルダと、診断を実行したフォルダが同じか確認します。</p></div></details>
+<details><summary>準備中に赤いエラーが出た・画面が止まったように見える</summary><div><p>ダウンロード中は時間がかかる場合があります。エラーが出たら、その文章をコピーするか画面を保存してください。「成功」とみなして次へ進まず、OS名と実行した段階を添えて相談します。</p><p>別のPython版や会社PCの制約が関係する場合もあります。分からないまま管理者権限で実行したり、PowerShellの実行ポリシーを下げたりする必要はありません。</p></div></details>
+<details><summary>新しい版へ更新するには？</summary><div><p><strong>ZIP版：</strong>新しいZIPを別のフォルダに展開し、そのフォルダで初回準備とブラウザ診断を実行します。新しいフォルダからPluginを起動します。過去の <code>runs/</code> は消さず、再開したい場合は元の場所をAIへ伝えます。<code>.venv</code> を別の場所へコピーして使うのは避けてください。</p><p><strong>Git版：</strong>自分の変更がある場合は先に確認・保存し、通常の方法で最新版を取得します。依存ライブラリが変わっていれば、Macはbootstrap、WindowsはライブラリとChromiumの準備を再実行して診断します。</p><p><strong>個人用Skill：</strong>Macの登録スクリプトを再実行します。管理対象でない既存Skillを勝手に上書きしないため、競合時は止まります。Claude Codeのリンクを使う場合は、参照元フォルダを残してください。</p></div></details>
+<details><summary>API契約や追加のサービス契約は必要？</summary><div><p>このSkill自体は外部AI APIキーや検索API契約を要求しません。使うClaude CodeやCodexの利用条件・費用・上限は、それぞれの契約に従います。ブラウザだけで使うChatGPTやClaudeの通常の会話に、このフォルダを渡すだけで同じ実行環境が付くわけではありません。</p></div></details>
+<details><summary>Googleスプレッドシートは自動で作られる？</summary><div><p>この配布物だけでGoogleアカウントへ接続する機能は入りません。使っているAI環境にGoogle Sheetsを作成できる接続があれば、その認証後に作成できます。接続できなければ、Excelの確認表を使うか、Excel／CSVをGoogle Sheetsへ取り込んでください。</p></div></details>
+<details><summary>問い合わせフォームやメールが空欄でもよい？</summary><div><p>大丈夫です。連絡先は補助情報です。見つからなければ空欄にし、会社の合否とは分けます。問い合わせフォームの探索だけに時間をかけることはしません。</p></div></details>
+<details><summary>証拠を読める言語に訳してもらえる？</summary><div><p>会社概要や根拠の説明を日本語で依頼できます。あとから確かめられるよう、<code>audit.json</code> には原文とURLも残します。翻訳だけで重要な除外条件を判断しきれない場合は、確認待ちとして扱います。</p></div></details>
+<details><summary>このガイドやSkillを、ほかの人へ渡したい</summary><div><p>このページのURLと<a href="https://github.com/morioka1206/verified-lead-research">GitHubの配布元</a>を渡せます。導入する人が自分のPCで準備します。調査データや連絡先を共有する必要はありません。</p><p>公開ガイドは <code>GUIDE.html</code> と同じ内容です。公開処理はこのHTMLだけを専用フォルダへコピーし、<code>runs/</code>、台帳、ログ、認証情報は含めません。</p></div></details>
+<p style="font-size:12px;margin-top:22px">開発者向けの補足：<a href="https://github.com/morioka1206/verified-lead-research/blob/main/docs/skill-compatibility.md">Codex・Claude Code互換性</a> · <a href="https://github.com/morioka1206/verified-lead-research/blob/main/skills/verifying-sales-leads/references/industry-risks.md">業種別の難しさ・実地メモ</a></p>
+</div></section><footer class="footer"><p>Verified Lead Research · Skill v1.1.4<br>利用ガイド更新：2026年11月6日</p><p><a href="https://github.com/morioka1206/verified-lead-research">配布元・変更履歴 ↗</a><br>必要な根拠を、ていねいに。</p></footer></main></div>
+<script>
+document.documentElement.classList.add('enhanced');
+document.querySelectorAll('[data-tabs]').forEach(group=>{
+  const tabs=[...group.querySelectorAll('[role="tab"]')];
+  function select(tab,focus=false){tabs.forEach(item=>{const selected=item===tab;item.setAttribute('aria-selected',String(selected));item.tabIndex=selected?0:-1;document.getElementById(item.getAttribute('aria-controls')).hidden=!selected;});if(focus)tab.focus();}
+  tabs.forEach((tab,i)=>{tab.addEventListener('click',()=>select(tab));tab.addEventListener('keydown',event=>{let next;if(event.key==='ArrowRight')next=(i+1)%tabs.length;if(event.key==='ArrowLeft')next=(i+tabs.length-1)%tabs.length;if(event.key==='Home')next=0;if(event.key==='End')next=tabs.length-1;if(next!==undefined){event.preventDefault();select(tabs[next],true);}});});
+  select(tabs.find(tab=>tab.getAttribute('aria-selected')==='true')||tabs[0]);
+});
+document.querySelectorAll('.copy').forEach(button=>{button.setAttribute('aria-live','polite');button.addEventListener('click',async()=>{const code=button.closest('.command').querySelector('pre');try{await navigator.clipboard.writeText(code.textContent);button.textContent='コピーしました';}catch{const range=document.createRange();range.selectNodeContents(code);const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);button.textContent='選択済み：手動でコピー';}setTimeout(()=>button.textContent='コピー',2600);});});
+if('IntersectionObserver'in window){const links=[...document.querySelectorAll('.toc a')];const observer=new IntersectionObserver(entries=>{entries.forEach(entry=>{if(entry.isIntersecting)links.forEach(link=>{if(link.hash==='#'+entry.target.id)link.setAttribute('aria-current','location');else link.removeAttribute('aria-current');});});},{rootMargin:'-10% 0px -65% 0px'});document.querySelectorAll('main>section').forEach(section=>observer.observe(section));}
+</script>
 </body>
 </html>
