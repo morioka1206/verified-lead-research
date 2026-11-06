@@ -74,6 +74,56 @@ class ManualNavigationTests(unittest.TestCase):
         self.assertTrue(self.page.locator('#codex-win-panel').is_visible())
         self.assertLessEqual(self.page.evaluate('document.documentElement.scrollWidth'), 390)
 
+    def test_each_shell_row_copies_only_its_own_command(self):
+        # Capture the clipboard boundary payload without changing the user's clipboard.
+        self.page.add_init_script("""Object.defineProperty(navigator, 'clipboard', {
+            value: {writeText: async text => {window.copiedValue = text;}}, configurable: true
+        });""")
+        cases = {
+            'win-panel': [
+                'py -3 -m venv .venv',
+                r'$env:PLAYWRIGHT_BROWSERS_PATH = "$PWD\.playwright-browsers"',
+                r'.\.venv\Scripts\python.exe -m pip install --requirement .\skills\verifying-sales-leads\requirements.txt',
+                r'.\.venv\Scripts\python.exe -m playwright install chromium',
+            ],
+            'codex-mac-panel': [
+                'python3 --version',
+                'python3 skills/verifying-sales-leads/scripts/bootstrap.py',
+                '.venv/bin/python skills/verifying-sales-leads/scripts/check_browser.py --output runs/browser-diagnostic.json',
+            ],
+            'codex-win-panel': [
+                'py -3 --version',
+                'py -3 -m venv .venv',
+                r'$env:PLAYWRIGHT_BROWSERS_PATH = "$PWD\.playwright-browsers"',
+                r'.\.venv\Scripts\python.exe -m pip install --requirement .\skills\verifying-sales-leads\requirements.txt',
+                r'.\.venv\Scripts\python.exe -m playwright install chromium',
+                r'.\.venv\Scripts\python.exe skills\verifying-sales-leads\scripts\check_browser.py --output runs\browser-diagnostic.json',
+            ],
+        }
+        for panel, commands in cases.items():
+            with self.subTest(panel=panel):
+                self.open_manual(panel)
+                rows = self.page.locator('#' + panel + ' .command-line')
+                self.assertEqual(rows.count(), len(commands))
+                for index, expected in enumerate(commands):
+                    rows.nth(index).locator('.copy').click()
+                    self.assertEqual(self.page.evaluate('window.copiedValue'), expected)
+        # Non-terminal, multiline prompts must still be copied together.
+        self.open_manual('install-codex')
+        prompt = self.page.locator('#install-codex .command').filter(
+            has=self.page.locator('pre', has_text='まず条件を一つずつ質問してください。'))
+        prompt.locator('.copy').click()
+        self.assertEqual(self.page.evaluate('window.copiedValue.split("\\n").length'), 3)
+
+    def test_denied_clipboard_selects_only_the_requested_shell_row(self):
+        self.page.add_init_script("""Object.defineProperty(navigator, 'clipboard', {
+            value: {writeText: async () => {throw new Error('Denied');}}, configurable: true
+        });""")
+        self.open_manual('codex-mac-panel')
+        self.page.locator('#codex-mac-panel .command-line').nth(1).locator('.copy').click()
+        self.assertEqual(self.page.evaluate('window.getSelection().toString()'),
+                         'python3 skills/verifying-sales-leads/scripts/bootstrap.py')
+
     def test_all_instructions_remain_readable_without_js_and_in_print(self):
         no_js = self.browser.new_context(java_script_enabled=False)
         try:
