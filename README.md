@@ -8,6 +8,10 @@
 
 Claude Codeでは、部品の準備後に配布フォルダから `claude --plugin-dir .` で読み込み、`/verified-lead-research:verifying-sales-leads` で呼び出します。この読み込みは起動中だけです。CodexやClaude Codeの個人用Skill登録とは別の方法なので、詳しくはマニュアルで確認してください。
 
+Codexの方は [Codex専用の導入手順](https://morioka1206.github.io/verified-lead-research/#install-codex) をご覧ください。Mac／Windowsの準備、同梱スクリプトでの登録、読み込み確認、更新、アプリの版による配置先の違いを説明しています。実行はローカルPC向けです。スマホ・iPadではマニュアルや完成した表を閲覧できますが、端末上でこのSkillを直接実行する構成ではありません。
+
+配布ZIPのリンクはmainの現在の内容を取得します。本番へ更新をプッシュすると同じリンクから新しいZIPを取得できますが、すでに展開したフォルダは自動更新されません。
+
 このSkill自体は外部AI APIキーを要求しません。利用するAI環境側の契約・費用・上限は別です。Googleスプレッドシートへの直接書き込みにも、利用環境側の接続・認証が必要です。
 
 別業種へ広げる前に、[業種・サイト別の難しさと実地メモ](skills/verifying-sales-leads/references/industry-risks.md)も確認してください。対応済みの問題、まだ難しい対象、新業種を10社で試す手順を記録しています。
