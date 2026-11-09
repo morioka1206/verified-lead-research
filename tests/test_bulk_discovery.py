@@ -124,6 +124,14 @@ class PrescreenTests(unittest.TestCase):
             prescreen.merge(crawls, result, ai)
 
 
+class InvisibleCharacterTests(unittest.TestCase):
+    def test_private_use_glyphs_do_not_break_quote_matching(self):
+        import leadlib
+        claim = {"evidence_url": "https://q.example/", "evidence_text_original": "Matcha Latte $6"}
+        pages = [{"url": "https://q.example/", "text": "Matcha\uf06e Latte $6", "status_code": 200}]
+        self.assertTrue(leadlib.evidence_exists(claim, pages))
+
+
 class MalformedLinkTests(unittest.TestCase):
     def test_same_site_rejects_link_with_phone_number_port(self):
         import leadlib
@@ -221,9 +229,11 @@ class BuildAssessmentsTests(unittest.TestCase):
                             exclusions=[["not_matched", "short"]])
         _, errors = build_assessments.build(CAMPAIGN, self.crawls(), [bad])
         joined = " ".join(errors)
-        self.assertIn("too thin", joined)
-        self.assertIn("no US state", joined)
         self.assertIn("needs exactly 2 exclusions", joined)
+        self.assertNotIn("thin", joined)
+        warnings = " ".join(build_assessments.build.last_warnings)
+        self.assertIn("looks thin", warnings)
+        self.assertIn("no state/ZIP", warnings)
 
     def test_allows_priced_pipe_menu_and_lowercase_state(self):
         import build_assessments

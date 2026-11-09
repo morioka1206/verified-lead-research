@@ -97,8 +97,12 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
+_INVISIBLE_RE = re.compile("[\ue000-\uf8ff\u200b-\u200d\u2060\ufeff]")
+
+
 def normalize_text(value: str) -> str:
-    return re.sub(r"\s+", " ", html.unescape(value)).strip()
+    # Private-use icon glyphs and zero-width characters are invisible on the page; drop them before matching.
+    return re.sub(r"\s+", " ", _INVISIBLE_RE.sub("", html.unescape(value))).strip()
 
 
 PRODUCT_EVIDENCE_RULES = {"already_handles", "can_use"}

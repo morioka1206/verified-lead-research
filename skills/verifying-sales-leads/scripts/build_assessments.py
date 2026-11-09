@@ -19,9 +19,10 @@ Guardrails (the build fails, listing every problem, instead of writing output):
   no defaults are filled in, and a reason reused verbatim by many companies is rejected
 * a claim's quote must appear on its page; without "url" it must appear on exactly
   one crawled page, otherwise the assessor must name the page
-* for `accepted`: product quote must contain a product keyword plus at least two more
-  words and must not be a title/navigation string; target_market quote must contain
-  a US state, ZIP, or US marker; all three claim types are required
+* for `accepted`: all three claim types are required
+* advisory warnings (not errors): a thin or title-like product quote, or a market quote
+  without a state/ZIP/US marker. The campaign's product_evidence and judgment_rules,
+  decided with the user, define what is acceptable; this tool must not be stricter
 
 check_assessments.py remains the independent verifier after this build.
 """
@@ -83,6 +84,7 @@ def build(campaign: dict[str, Any], crawls: list[dict[str, Any]], decisions: lis
     )
     out: list[dict[str, Any]] = []
     errors: list[str] = []
+    warnings: list[str] = []
     seen: set[str] = set()
     for n, d in enumerate(decisions):
         if "index" in d:
@@ -145,12 +147,13 @@ def build(campaign: dict[str, Any], crawls: list[dict[str, Any]], decisions: lis
                 errors.append(f"{label}: {ctype} quote appears on {len(pages)} pages; add \"url\" to choose the page")
                 continue
             if rec == "accepted":
+                # Advisory only: the campaign's product_evidence / judgment_rules decide acceptance, not this tool.
                 if ctype == "product":
                     lowered = quote.lower()
                     if looks_like_navigation(quote) or not any(k in lowered for k in keywords) or len(quote.split()) < 3:
-                        errors.append(f"{label}: product quote is a title/nav string or too thin: {quote[:60]!r}")
+                        warnings.append(f"{label}: product quote looks thin or like a title/nav string; check it fits product_evidence: {quote[:60]!r}")
                 if ctype == "target_market" and not market.search(quote):
-                    errors.append(f"{label}: target_market quote has no US state/ZIP/US marker: {quote[:60]!r}")
+                    warnings.append(f"{label}: target_market quote has no state/ZIP/US marker; fine if judgment_rules accept a place name: {quote[:60]!r}")
             claims.append({"type": ctype, "evidence_url": source, "evidence_text_original": quote, "evidence_text_ja": c.get("ja") or ""})
         if rec == "accepted":
             missing = [t for t in CLAIM_TYPES if not types[t]]
@@ -168,6 +171,7 @@ def build(campaign: dict[str, Any], crawls: list[dict[str, Any]], decisions: lis
             "uncertainties": list(d.get("uncertainties") or []),
             "rejection_reason": d.get("rejection_reason"),
         })
+    build.last_warnings = warnings  # type: ignore[attr-defined]
     return out, errors
 
 
@@ -189,7 +193,8 @@ def main() -> int:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(assessments, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     counts = Counter(a["recommendation"] for a in assessments)
-    print(json.dumps({"written": True, "assessments": len(assessments), "recommendations": dict(counts)}, ensure_ascii=False))
+    print(json.dumps({"written": True, "assessments": len(assessments), "recommendations": dict(counts),
+                      "warnings": getattr(build, "last_warnings", [])}, ensure_ascii=False, indent=2))
     return 0
 
 
