@@ -68,6 +68,21 @@ Discover candidates with several localized queries. Save official candidate URLs
 
 The SQLite ledger deduplicates all discoveries by official domain across every batch. A company that is queued, in progress, or complete is never added again.
 
+### Bulk discovery from OpenStreetMap
+
+For storefront buyer types (cafes, tea shops, roasters, bakeries, restaurants, supermarkets), web search yields only a few new companies per query. Import places that list a website from OpenStreetMap instead, one US state per Overpass request:
+
+```text
+<python> skills/verifying-sales-leads/scripts/import_osm.py \
+  --tag amenity=cafe --tag shop=tea --tag shop=coffee \
+  --all-us-states \
+  --exclude-candidates runs/<timestamp> \
+  --raw-dir runs/<timestamp>/osm-raw \
+  --output runs/<timestamp>/discovery-osm-cafe.json
+```
+
+Each item records the Overpass query and the OSM element URL as discovery provenance. Chain locations collapse to one company homepage (`osm_locations` counts them); social profiles, link hubs, ordering platforms, marketplaces, shared hosting tenants, and `.edu`/`.gov` sites are skipped. OSM is discovery only: every imported company is still crawled and needs on-site evidence. Keep the default pause between states and do not run parallel imports against the public Overpass server. Brands, wholesalers, and manufacturers are rarely mapped; keep using web search for them.
+
 ## Process one batch
 
 Ask the ledger for work:
@@ -92,6 +107,58 @@ Use the returned `candidates_file` with `crawl_candidates.py`. Save crawls and a
   --candidates runs/<timestamp>/batches/0001/candidates.json \
   --output runs/<timestamp>/batches/0001/crawls.json
 ```
+
+Before AI assessment, run the deterministic pre-screen:
+
+```text
+<python> skills/verifying-sales-leads/scripts/prescreen.py screen \
+  --campaign runs/<timestamp>/campaign.json \
+  --crawls runs/<timestamp>/batches/0001/crawls.json \
+  --output runs/<timestamp>/batches/0001/prescreen.json
+```
+
+Companies with no usable page, or with no campaign product keyword on any usable page, receive an automatic `review` assessment (no claims, every exclusion `unclear`). The pre-screen can only route a company to review; it never accepts. Only companies in `for_ai` need AI assessment; their keyword snippets are reading hints, and evidence must still be copied exactly from the crawl pages. Write the AI assessments for `for_ai` companies, then merge:
+
+```text
+<python> skills/verifying-sales-leads/scripts/prescreen.py merge \
+  --crawls runs/<timestamp>/batches/0001/crawls.json \
+  --prescreen runs/<timestamp>/batches/0001/prescreen.json \
+  --assessments runs/<timestamp>/batches/0001/ai-assessments.json \
+  --output runs/<timestamp>/batches/0001/assessments.json
+```
+
+Merge fails if any crawled company lacks an assessment, or if an AI assessment tries to accept an auto-reviewed company.
+
+Prefer writing compact decisions and building the assessments with guardrails (no default exclusion reasons, page lookup, quote-specificity checks):
+
+```text
+<python> skills/verifying-sales-leads/scripts/build_assessments.py \
+  --campaign runs/<timestamp>/campaign.json \
+  --crawls runs/<timestamp>/batches/0001/crawls.json \
+  --decisions runs/<timestamp>/batches/0001/decisions.json \
+  --output runs/<timestamp>/batches/0001/ai-assessments.json
+```
+
+Before merging, dry-run the acceptance gate on the AI drafts and fix every reported excerpt or URL (or downgrade that company to `review`):
+
+```text
+<python> skills/verifying-sales-leads/scripts/check_assessments.py \
+  --campaign runs/<timestamp>/campaign.json \
+  --crawls runs/<timestamp>/batches/0001/crawls.json \
+  --assessments runs/<timestamp>/batches/0001/ai-assessments.json
+```
+
+### Parallel assessment across runs
+
+A run issues one open batch at a time. To assess in parallel, split the candidates into separate runs (for example by US region), give each run to its own assessor agent, and merge the runs' exported lists at the end with domain deduplication:
+
+```text
+<python> skills/verifying-sales-leads/scripts/merge_runs.py \
+  --run-dir runs/<pilot> --run-dir runs/<group-a> --run-dir runs/<group-b> \
+  --output-dir runs/<combined>
+```
+
+Only final `accepted` records are merged, first run wins on duplicates, and `merge-summary.json` lists duplicates and companies whose status differs between runs. Every agent follows the same rules and the same scripts; the deterministic gate is unchanged.
 
 After writing `assessments.json`, complete the batch:
 
@@ -118,3 +185,26 @@ After every completed batch:
 `leads.csv` contains accepted companies up to the requested target. `audit.json` contains every completed candidate, including review, rejected, and blocked records. Existing `human_verdict` and `human_notes` values are preserved when later batches refresh the CSV.
 
 When the candidate ceiling is reached before the accepted target, stop and report the shortfall and status counts. Do not silently increase the ceiling or lower the acceptance gate.
+
+
+## Precision audit of accepted records
+
+Periodically (and before delivering a list) flag accepted records whose evidence or exclusion checks look weak, then have an assessor re-check the flagged ones. The audit is read-only; downgrades are applied explicitly.
+
+```text
+<python> skills/verifying-sales-leads/scripts/audit_accepted.py \
+  --run-dir runs/<timestamp> --output runs/<timestamp>/audit-flags.json
+```
+
+## Re-judging completed batches after the definition changes
+
+When the user changes the campaign's acceptance definition (for example `product_evidence` from `already_handles` to `can_use`), earlier review records were judged under the old definition. Re-run `prescreen.py screen` on the saved crawls, write fresh assessments for the companies to re-judge, and apply them per batch:
+
+```text
+<python> skills/verifying-sales-leads/scripts/manage_batches.py reassess \
+  --run-dir runs/<timestamp> --batch-id 3 \
+  --crawls runs/<timestamp>/batches/0003/crawls.json \
+  --assessments runs/<timestamp>/batches/0003/reassess-assessments.json
+```
+
+The same deterministic gate applies, duplicates of an already accepted canonical site stay in review, and each record keeps its previous status in `reassessment_history`. Never use reassess to override the gate under an unchanged definition. To lower a single record, use `downgrade --decisions` (optionally with `batch_id`).

@@ -97,8 +97,25 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
+_INVISIBLE_RE = re.compile("[\ue000-\uf8ff\u200b-\u200d\u2060\ufeff]")
+
+
 def normalize_text(value: str) -> str:
-    return re.sub(r"\s+", " ", html.unescape(value)).strip()
+    # Private-use icon glyphs and zero-width characters are invisible on the page; drop them before matching.
+    return re.sub(r"\s+", " ", _INVISIBLE_RE.sub("", html.unescape(value))).strip()
+
+
+PRODUCT_EVIDENCE_RULES = {"already_handles", "can_use"}
+
+
+def product_evidence_keywords(campaign: dict[str, Any]) -> list[str]:
+    """Words that count as product relevance: the product's own keywords, plus the
+    buyer-fit words when the campaign accepts companies that can use the product."""
+    keywords = list((campaign.get("product") or {}).get("keywords") or [])
+    evidence = campaign.get("product_evidence") or {}
+    if evidence.get("rule") == "can_use":
+        keywords += list(evidence.get("prescreen_keywords") or [])
+    return keywords
 
 
 def validate_campaign(campaign: Any) -> list[str]:
@@ -119,6 +136,19 @@ def validate_campaign(campaign: Any) -> list[str]:
         errors.append("market.keywords must not be empty")
     if not campaign.get("buyer_types"):
         errors.append("buyer_types must not be empty")
+    evidence = campaign.get("product_evidence")
+    if not isinstance(evidence, dict):
+        errors.append("product_evidence is required: decide in the intake what counts as product evidence (see references/intake-interview.md)")
+    else:
+        if evidence.get("rule") not in PRODUCT_EVIDENCE_RULES:
+            errors.append("product_evidence.rule must be one of: " + ", ".join(sorted(PRODUCT_EVIDENCE_RULES)))
+        if not str(evidence.get("summary_ja") or "").strip():
+            errors.append("product_evidence.summary_ja is required")
+        if evidence.get("rule") == "can_use" and not evidence.get("prescreen_keywords"):
+            errors.append("product_evidence.prescreen_keywords must not be empty when rule is can_use")
+    rules = campaign.get("judgment_rules", [])
+    if not isinstance(rules, list) or not all(isinstance(rule, str) and rule.strip() for rule in rules):
+        errors.append("judgment_rules must be a list of non-empty sentences (answers to the intake checklist)")
     research_mode = campaign.get("research_mode", "standard")
     if research_mode not in {"standard", "batch"}:
         errors.append("research_mode must be standard or batch")
@@ -203,9 +233,22 @@ def company_root_url(url: str) -> str:
     return canonicalize_url(f'{parsed.scheme}://{parsed.netloc}{path}/')
 
 
+def _link_is_valid(url: str) -> bool:
+    """Drop malformed page links (for example a phone number where the port belongs)."""
+    try:
+        canonicalize_url(url)
+    except (TypeError, ValueError):
+        return False
+    return True
+
+
 def same_site(left: str, right: str) -> bool:
-    left_raw = urlparse(canonicalize_url(left)).hostname or ''
-    right_raw = urlparse(canonicalize_url(right)).hostname or ''
+    try:
+        left_raw = urlparse(canonicalize_url(left)).hostname or ''
+        right_raw = urlparse(canonicalize_url(right)).hostname or ''
+    except ValueError:
+        # A malformed page link (for example a phone number in the port) is not same-site.
+        return False
     if _shared_host(left_raw) or _shared_host(right_raw):
         # A provider homepage is not the root of every customer's company site.
         return bool(_tenant_path(left) and _tenant_path(right) and company_key(left) == company_key(right))
@@ -414,12 +457,12 @@ def parse_site(html_text: str, base_url: str) -> dict[str, Any]:
         if not href or href.lower().startswith(("#", "javascript:", "tel:", "mailto:")):
             continue
         absolute = urljoin(base_url, href).split("#", 1)[0]
-        if urlparse(absolute).scheme not in {"http", "https"}:
+        if urlparse(absolute).scheme not in {"http", "https"} or not _link_is_valid(absolute):
             continue
         links.append({"url": absolute, "text": anchor_text})
     for source in parser.frame_links:
         absolute = urljoin(base_url, source).split('#', 1)[0]
-        if urlparse(absolute).scheme in {'http', 'https'}:
+        if urlparse(absolute).scheme in {'http', 'https'} and _link_is_valid(absolute):
             links.append({'url': absolute, 'text': 'frame document', 'kind': 'frame'})
     return {
         "company_name": company_name,

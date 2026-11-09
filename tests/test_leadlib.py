@@ -310,6 +310,7 @@ class LeadLibraryTests(unittest.TestCase):
             "id": "test",
             "product": {"name": "matcha", "keywords": ["matcha"]},
             "market": {"name": "US", "keywords": ["USA"]},
+            "product_evidence": {"rule": "already_handles", "summary_ja": "商材そのものの取扱いを証拠とする。"},
             "buyer_types": [{"name": "importer", "keywords": ["importer"]}],
             "target_accepted": 51,
             "max_candidates": 101,
