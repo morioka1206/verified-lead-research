@@ -17,6 +17,7 @@ class CrawlCheckpointTests(unittest.TestCase):
     def test_cafe_campaign_uses_hospitality_page_priorities(self):
         campaign = {
             "objective": "find_hospitality_buyers",
+            "product_evidence": {"rule": "already_handles", "summary_ja": "商材そのものの取扱いを証拠とする。"},
             "buyer_types": [{"name": "カフェ", "keywords": ["cafe"]}],
         }
         self.assertEqual(
@@ -29,6 +30,7 @@ class CrawlCheckpointTests(unittest.TestCase):
             "id": "checkpoint-test",
             "product": {"name": "抹茶", "keywords": ["matcha"]},
             "market": {"name": "アメリカ", "keywords": ["United States"]},
+            "product_evidence": {"rule": "already_handles", "summary_ja": "商材そのものの取扱いを証拠とする。"},
             "buyer_types": [{"name": "カフェ", "keywords": ["cafe"]}],
             "target_accepted": 1,
             "max_candidates": 2,

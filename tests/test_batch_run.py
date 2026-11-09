@@ -22,6 +22,7 @@ class BatchRunTests(unittest.TestCase):
             "product": {"name": "抹茶", "keywords": ["matcha"]},
             "market": {"name": "アメリカ", "keywords": ["United States"]},
             "objective": "find_importers",
+            "product_evidence": {"rule": "already_handles", "summary_ja": "商材そのものの取扱いを証拠とする。"},
             "buyer_types": [{"name": "輸入業者", "keywords": ["importer"]}],
             "excluded_types": [],
             "target_accepted": 2,
@@ -47,6 +48,35 @@ class BatchRunTests(unittest.TestCase):
         large["max_candidates"] = 2500
         large["batch_size"] = 50
         self.assertEqual(leadlib.validate_campaign(large), [])
+
+    def test_same_canonical_site_is_accepted_once(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            campaign_path = root / "campaign.json"
+            campaign = self.campaign(); campaign["target_accepted"] = 3; campaign["max_candidates"] = 4
+            campaign_path.write_text(json.dumps(campaign), encoding="utf-8")
+            run_dir = root / "run"
+            manage_batches.initialize(campaign_path, run_dir)
+            source = root / "found.json"
+            source.write_text(json.dumps([{"url": "https://old-domain.example/"}, {"url": "https://new-domain.example/"}]), encoding="utf-8")
+            manage_batches.add_candidates(run_dir, source)
+            batch = manage_batches.next_batch(run_dir)
+            selected = json.loads(Path(batch["candidates_file"]).read_text(encoding="utf-8"))
+            page_url = "https://new-domain.example/about"
+            text = "Japanese matcha. Wholesale importer. Based in the United States."
+            crawls, assessments = [], []
+            for candidate in selected:
+                crawls.append({"candidate": candidate, "canonical_url": "https://new-domain.example/", "final_url": page_url,
+                               "site_status": "active", "pages": [{"url": page_url, "text": text}],
+                               "emails": [], "contact_forms": [], "errors": [], "checked_at": "2026-09-25T00:00:00+00:00"})
+                assessments.append({"candidate_url": candidate["url"], "company_name": "Same", "recommendation": "accepted",
+                                    "claims": [{"type": t, "evidence_url": page_url, "evidence_text_original": q}
+                                               for t, q in (("product", "Japanese matcha."), ("buyer_role", "Wholesale importer."), ("target_market", "Based in the United States."))]})
+            (root / "c.json").write_text(json.dumps(crawls), encoding="utf-8")
+            (root / "a.json").write_text(json.dumps(assessments), encoding="utf-8")
+            summary = manage_batches.complete_batch(run_dir, batch["batch_id"], root / "c.json", root / "a.json")
+            self.assertEqual(summary["accepted_available"], 1)
+            self.assertEqual(summary["status_counts"].get("review"), 1)
 
     def test_large_run_deduplicates_resumes_and_exports(self):
         with TemporaryDirectory() as directory:
@@ -138,6 +168,30 @@ class BatchRunTests(unittest.TestCase):
             self.assertEqual(workbook.sheetnames, ["営業リスト"])
             headers = [cell.value for cell in next(workbook["営業リスト"].iter_rows(min_row=4, max_row=4))]
             self.assertNotIn("人の判定", headers)
+
+            decisions_path = root / "downgrade.json"
+            decisions_path.write_text(json.dumps([
+                {"canonical_url": "https://www.example1.com/", "decision": "downgrade", "reason_ja": "テストの格下げ。"},
+                {"canonical_url": "https://example2.com/", "decision": "keep", "reason_ja": "維持。"},
+                {"canonical_url": "https://missing.example/", "decision": "downgrade", "reason_ja": "存在しない。"},
+            ]), encoding="utf-8")
+            downgraded = manage_batches.downgrade_records(run_dir, decisions_path)
+            self.assertEqual(downgraded["downgraded"], ["https://example1.com/"])
+            self.assertEqual(downgraded["not_found"], ["missing.example"])
+            self.assertEqual(downgraded["accepted_available"], 1)
+            again = manage_batches.downgrade_records(run_dir, decisions_path)
+            self.assertEqual(again["downgraded"], [])
+            reassessments = [dict(a, recommendation="accepted") for a in assessments if a["candidate_url"] == "https://example1.com/"]
+            (root / "reassess.json").write_text(json.dumps(reassessments), encoding="utf-8")
+            redone = manage_batches.reassess_batch(run_dir, batch["batch_id"], crawls_path, root / "reassess.json")
+            self.assertEqual(redone["transitions"], {"review->accepted": 1})
+            self.assertEqual(redone["accepted_available"], 2)
+            weak = [dict(reassessments[0], claims=[])]
+            (root / "weak.json").write_text(json.dumps(weak), encoding="utf-8")
+            self.assertEqual(manage_batches.reassess_batch(run_dir, batch["batch_id"], crawls_path, root / "weak.json")["transitions"], {"accepted->review": 1})
+            scoped = root / "scoped.json"
+            scoped.write_text(json.dumps([{"canonical_url": "https://example2.com/", "decision": "downgrade", "reason_ja": "別の回のみ。", "batch_id": 99}]), encoding="utf-8")
+            self.assertEqual(manage_batches.downgrade_records(run_dir, scoped)["downgraded"], [])
 
 
 if __name__ == "__main__":

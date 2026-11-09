@@ -44,7 +44,7 @@ Each assessment must use this shape:
 }
 ```
 
-`recommendation` may be `accepted`, `review`, or `rejected`. The agent owns the target-fit decision, including exclusions such as competitors or unsuitable business types. The finalizer checks availability and evidence and may downgrade the result, but never upgrades `review` or `rejected`. A final accepted record therefore requires `recommendation: accepted` plus one source-valid claim of each type: `product`, `buyer_role`, and `target_market`.
+`recommendation` may be `accepted`, `review`, or `rejected`. The agent owns the target-fit decision, including exclusions such as competitors or unsuitable business types. The finalizer checks availability and evidence and may downgrade the result, but never upgrades `review` or `rejected`. What the `product` claim must show is set by the campaign's `product_evidence` (`already_handles` or `can_use`); follow its `summary_ja` and `by_buyer_type`, and do not substitute a stricter reading. A final accepted record therefore requires `recommendation: accepted` plus one source-valid claim of each type: `product`, `buyer_role`, and `target_market`.
 
 キャンペーンの `excluded_types` に項目がある場合は、各項目と同じ文字列を `exclusion_checks[].type` に入れ、1項目ずつ確認する。`result` は次のいずれかにする。
 

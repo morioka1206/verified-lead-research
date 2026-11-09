@@ -16,6 +16,12 @@ Use this structure when campaign settings need to be saved or reused.
     "keywords": [],
     "activity_evidence": "sales_shipping_customers_warehouse_or_office"
   },
+  "product_evidence": {
+    "rule": "can_use",
+    "summary_ja": "",
+    "by_buyer_type": {},
+    "prescreen_keywords": []
+  },
   "objective": "find_distributors",
   "buyer_types": [
     {
@@ -41,6 +47,15 @@ Suggested `market.activity_evidence` values are:
 - `sales_shipping_customers_warehouse_or_office`: sales, shipping, customers, warehouse, or office in the target market
 - `office_required`: a target-market address or office is mandatory
 - `explicit_sales_or_distribution`: explicit sales or distribution in the market; an English-language site alone is insufficient
+
+`product_evidence` is required and is decided with the user in every intake (see references/intake-interview.md, 第3回). It defines what the `product` claim must show:
+
+- `already_handles`: the company already sells, serves or distributes the product (or its category). Prescreen uses `product.keywords` only.
+- `can_use`: the company is a type of business that can use the product (for example a cafe's drink menu for matcha). The product itself need not appear. Prescreen also accepts `prescreen_keywords`, and `by_buyer_type` records what counts for each buyer type.
+
+`judgment_rules` (array of short Japanese sentences) records the per-campaign answers to the intake's judgment-definition checklist (business scope, chains, market-evidence granularity, competitors, operating status, third-party sources, industry-specific issues). Pass them verbatim to every assessor; add new rules only after asking the user.
+
+`summary_ja` is the one-paragraph Japanese definition shown to assessors. Scripts refuse a campaign without this block, so an assessor can never silently choose the strictest reading.
 
 `secondary_buyer_types` are allowed only when the user accepts adjacent roles. `contact_preference` guides collection but never replaces the three-evidence acceptance gate.
 

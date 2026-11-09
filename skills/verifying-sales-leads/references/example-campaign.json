@@ -25,19 +25,42 @@
   "buyer_types": [
     {
       "name": "輸入業者",
-      "keywords": ["importer", "imports", "importing"]
+      "keywords": [
+        "importer",
+        "imports",
+        "importing"
+      ]
     },
     {
       "name": "卸売業者・流通業者",
-      "keywords": ["wholesale", "wholesaler", "distributor", "distribution", "foodservice"]
+      "keywords": [
+        "wholesale",
+        "wholesaler",
+        "distributor",
+        "distribution",
+        "foodservice"
+      ]
     }
   ],
   "secondary_buyer_types": [],
-  "excluded_types": ["consumer blog", "marketplace-only seller", "restaurant-only business"],
+  "excluded_types": [
+    "consumer blog",
+    "marketplace-only seller",
+    "restaurant-only business"
+  ],
   "excluded_companies": [],
   "contact_preference": "public_email_then_optional_form",
   "target_accepted": 30,
   "max_candidates": 100,
   "batch_size": 50,
-  "max_pages_per_company": 5
+  "max_pages_per_company": 5,
+  "product_evidence": {
+    "rule": "already_handles",
+    "summary_ja": "輸入・卸の候補なので、抹茶（または日本茶）をすでに取り扱っていることを商材の証拠とする。"
+  },
+  "judgment_rules": [
+    "チェーンは本部サイトのみ合格。加盟店・1店舗のサイトは要確認。",
+    "対象市場の証拠は米国内の住所か、米国内への販売・配送の明記。",
+    "日本の茶の輸出元・生産者は競合として除外。"
+  ]
 }

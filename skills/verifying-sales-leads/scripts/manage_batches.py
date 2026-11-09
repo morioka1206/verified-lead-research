@@ -381,11 +381,32 @@ def complete_batch(
         raise ValueError("assessment URLs must exactly match the open batch")
 
     completed_at = utc_now()
+
+    def identity(url: Any) -> str | None:
+        try:
+            return company_key(canonicalize_url(url)) if url else None
+        except (TypeError, ValueError):
+            return None
+
+    accepted_identities = set()
+    for (existing_json,) in connection.execute("SELECT record_json FROM records").fetchall():
+        existing = json.loads(existing_json)
+        if existing.get("verification_status") == "accepted":
+            accepted_identities.add(identity(existing.get("canonical_url")))
     try:
         for row in expected_rows:
             crawl = crawl_by_url[row["url"]]
             assessment = assessment_by_url[row["url"]]
             record = finalize_record(crawl, assessment, campaign)
+            # Distinct candidate domains can redirect to one company site; keep only the first acceptance.
+            key = identity(record.get("canonical_url"))
+            if record.get("verification_status") == "accepted" and key in accepted_identities:
+                record["verification_status"] = "review"
+                record["uncertainties"] = list(record.get("uncertainties") or []) + [
+                    "Duplicate company: the same canonical site is already accepted in this run"
+                ]
+            elif record.get("verification_status") == "accepted":
+                accepted_identities.add(key)
             connection.execute(
                 """
                 INSERT INTO records
@@ -420,6 +441,112 @@ def complete_batch(
     return export_outputs(run_dir)
 
 
+def downgrade_records(run_dir: Path, decisions_path: Path) -> dict[str, Any]:
+    """Lower completed records to review (never upgrade). Decisions: [{canonical_url, decision, reason_ja, batch_id?}]; batch_id limits it to one batch."""
+    decisions = read_array(decisions_path, "downgrade decisions")
+    wanted = {}
+    for item in decisions:
+        if item.get("decision") != "downgrade":
+            continue
+        reason = str(item.get("reason_ja") or "").strip()
+        if not reason:
+            raise ValueError(f"downgrade needs reason_ja: {item.get('canonical_url')}")
+        wanted[company_key(canonicalize_url(item["canonical_url"]))] = (reason, item.get("batch_id"))
+    connection = connect(run_dir)
+    changed, not_found = [], set(wanted)
+    with connection:
+        for row in connection.execute("SELECT rowid, batch_id, record_json FROM records").fetchall():
+            record = json.loads(row["record_json"])
+            url = record.get("canonical_url") or record.get("final_url")
+            if not url:
+                continue
+            key = company_key(canonicalize_url(url))
+            if key not in wanted:
+                continue
+            reason, only_batch = wanted[key]
+            if only_batch is not None and int(only_batch) != int(row["batch_id"]):
+                continue
+            not_found.discard(key)
+            if record.get("verification_status") != "accepted":
+                continue
+            record["verification_status"] = "review"
+            record["uncertainties"] = list(record.get("uncertainties") or []) + ["監査で格下げ：" + reason]
+            record["downgraded_at"] = utc_now()
+            connection.execute("UPDATE records SET record_json = ? WHERE rowid = ?", (json.dumps(record, ensure_ascii=False), row["rowid"]))
+            changed.append(url)
+    connection.close()
+    summary = export_outputs(run_dir)
+    return {"status": "downgraded", "downgraded": changed, "not_found": sorted(not_found), "accepted_available": summary.get("accepted_available")}
+
+
+def reassess_batch(run_dir: Path, batch_id: int, crawls_path: Path, assessments_path: Path) -> dict[str, Any]:
+    """Re-judge records of a completed batch after the campaign definition changed.
+
+    Only the companies present in the assessments file are re-finalized, through the
+    same deterministic gate as complete-batch (evidence on page, every exclusion,
+    blocked sites, duplicate canonical sites). The previous status is kept in
+    `reassessment_history`. Use only after the user changed the campaign's
+    acceptance definition (for example product_evidence), never to override a gate.
+    """
+    crawls = {(c.get("candidate") or {}).get("url"): c for c in read_array(crawls_path, "crawls")}
+    assessments = read_array(assessments_path, "assessments")
+    campaign = load_campaign(run_dir)
+    errors = validate_campaign(campaign)
+    if errors:
+        raise ValueError("; ".join(errors))
+    connection = connect(run_dir)
+    batch = connection.execute("SELECT status FROM batches WHERE id = ?", (batch_id,)).fetchone()
+    if not batch or batch["status"] != "completed":
+        connection.close()
+        raise ValueError(f"batch {batch_id} is not a completed batch")
+    rows = {
+        row["url"]: row
+        for row in connection.execute(
+            "SELECT c.url, r.rowid AS rid, r.record_json FROM candidates c JOIN records r ON r.domain = c.domain "
+            "WHERE c.batch_id = ? AND r.batch_id = ?",
+            (batch_id, batch_id),
+        ).fetchall()
+    }
+
+    def identity(url: Any) -> str | None:
+        try:
+            return company_key(canonicalize_url(url)) if url else None
+        except (TypeError, ValueError):
+            return None
+
+    accepted_elsewhere = set()
+    target_urls = {a.get("candidate_url") for a in assessments}
+    for row in connection.execute("SELECT r.record_json, c.url FROM records r JOIN candidates c ON c.domain = r.domain").fetchall():
+        existing = json.loads(row["record_json"])
+        if existing.get("verification_status") == "accepted" and row["url"] not in target_urls:
+            accepted_elsewhere.add(identity(existing.get("canonical_url")))
+    changed: dict[str, int] = {}
+    with connection:
+        for assessment in assessments:
+            url = assessment.get("candidate_url")
+            if url not in rows or url not in crawls:
+                raise ValueError(f"not a candidate of batch {batch_id} with a crawl: {url}")
+            previous = json.loads(rows[url]["record_json"])
+            record = finalize_record(crawls[url], assessment, campaign)
+            key = identity(record.get("canonical_url"))
+            if record.get("verification_status") == "accepted" and key in accepted_elsewhere:
+                record["verification_status"] = "review"
+                record["uncertainties"] = list(record.get("uncertainties") or []) + [
+                    "Duplicate company: the same canonical site is already accepted in this run"
+                ]
+            elif record.get("verification_status") == "accepted":
+                accepted_elsewhere.add(key)
+            history = list(previous.get("reassessment_history") or [])
+            history.append({"previous_status": previous.get("verification_status"), "reassessed_at": utc_now()})
+            record["reassessment_history"] = history
+            connection.execute("UPDATE records SET record_json = ? WHERE rowid = ?", (json.dumps(record, ensure_ascii=False), rows[url]["rid"]))
+            transition = f"{previous.get('verification_status')}->{record['verification_status']}"
+            changed[transition] = changed.get(transition, 0) + 1
+    connection.close()
+    summary = export_outputs(run_dir)
+    return {"status": "reassessed", "batch_id": batch_id, "transitions": changed, "accepted_available": summary.get("accepted_available")}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -444,6 +571,16 @@ def main() -> int:
     status_parser = subparsers.add_parser("status")
     status_parser.add_argument("--run-dir", required=True, type=Path)
 
+    reassess_parser = subparsers.add_parser("reassess", help="re-judge part of a completed batch after the campaign definition changed")
+    reassess_parser.add_argument("--run-dir", required=True, type=Path)
+    reassess_parser.add_argument("--batch-id", required=True, type=int)
+    reassess_parser.add_argument("--crawls", required=True, type=Path)
+    reassess_parser.add_argument("--assessments", required=True, type=Path)
+
+    downgrade_parser = subparsers.add_parser("downgrade", help="lower completed accepted records to review (never upgrades)")
+    downgrade_parser.add_argument("--run-dir", required=True, type=Path)
+    downgrade_parser.add_argument("--decisions", required=True, type=Path)
+
     export_parser = subparsers.add_parser("export")
     export_parser.add_argument("--run-dir", required=True, type=Path)
 
@@ -456,6 +593,10 @@ def main() -> int:
         result = next_batch(args.run_dir)
     elif args.command == "complete-batch":
         result = complete_batch(args.run_dir, args.batch_id, args.crawls, args.assessments)
+    elif args.command == "reassess":
+        result = reassess_batch(args.run_dir, args.batch_id, args.crawls, args.assessments)
+    elif args.command == "downgrade":
+        result = downgrade_records(args.run_dir, args.decisions)
     elif args.command == "status":
         result = export_outputs(args.run_dir)
     else:
