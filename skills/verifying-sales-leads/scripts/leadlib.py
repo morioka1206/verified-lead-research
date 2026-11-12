@@ -258,6 +258,84 @@ def same_site(left: str, right: str) -> bool:
     return left_host == right_host or left_host.endswith(f".{right_host}") or right_host.endswith(f".{left_host}")
 
 
+# Second-level labels that form part of a country public suffix (example.co.uk, example.co.jp).
+_SECOND_LEVEL_SUFFIX_LABELS = frozenset({
+    "co", "com", "net", "org", "or", "ne", "ac", "ad", "go", "gr", "lg", "ed", "gov", "edu", "ltd", "plc", "biz",
+})
+# Free-mail providers: a small business often publishes its own address here; never an authority.
+FREE_MAIL_DOMAINS = frozenset({
+    "gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "live.com", "msn.com", "yahoo.com",
+    "yahoo.co.jp", "yahoo.de", "yahoo.fr", "yahoo.co.uk", "icloud.com", "me.com", "mac.com", "aol.com",
+    "gmx.de", "gmx.net", "gmx.at", "gmx.ch", "web.de", "t-online.de", "freenet.de", "posteo.de", "mail.de",
+    "orange.fr", "free.fr", "laposte.net", "libero.it", "naver.com", "qq.com", "163.com", "proton.me",
+    "protonmail.com", "zoho.com", "ezweb.ne.jp", "docomo.ne.jp", "softbank.ne.jp", "i.softbank.jp",
+})
+
+
+def _brand_label(hostname: str) -> str:
+    """Registrable name label of a host (mashsteak.de -> mashsteak, shop.example.co.uk -> example)."""
+    labels = [label for label in hostname.lower().strip(".").split(".") if label]
+    if len(labels) < 2:
+        return labels[0] if labels else ""
+    suffix_len = 1
+    if len(labels) >= 3 and len(labels[-1]) == 2 and labels[-2] in _SECOND_LEVEL_SUFFIX_LABELS:
+        suffix_len = 2
+    return labels[-suffix_len - 1]
+
+
+def email_domain_relation(email: str, company_url: str) -> str | None:
+    """Classify a displayed email against the company's own site.
+
+    Returns ``company_domain`` (same host or a subdomain either way), ``related_domain``
+    (same brand name under another public suffix, e.g. mashsteak.de / mashsteak.dk),
+    ``free_mail`` (a common free-mail provider), or ``None`` for an unrelated third party
+    such as an accessibility authority named on an imprint or accessibility page.
+    """
+    domain = email.rsplit("@", 1)[-1].strip().lower().rstrip(".")
+    if not domain or "." not in domain:
+        return None
+    try:
+        company_host = domain_key(company_url)
+    except ValueError:
+        return None
+    domain = domain[4:] if domain.startswith("www.") else domain
+    if domain == company_host or domain.endswith(f".{company_host}") or company_host.endswith(f".{domain}"):
+        return "company_domain"
+    if domain in FREE_MAIL_DOMAINS:
+        return "free_mail"
+    if _shared_host(company_host):
+        return None  # A hosting provider's own name says nothing about its tenants.
+    brand = _brand_label(company_host)
+    if len(brand) >= 4 and brand == _brand_label(domain):
+        return "related_domain"
+    return None
+
+
+def filter_company_contacts(
+    emails: Iterable[dict[str, Any]],
+    contact_forms: Iterable[dict[str, Any]],
+    scope_url: str,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+    """Keep only contacts that belong to the company at ``scope_url``.
+
+    Returns (emails, contact_forms, excluded_emails). Contact forms must be on the company's
+    own site; emails must be at the company's domain or a clearly related one.
+    """
+    kept_emails: list[dict[str, Any]] = []
+    excluded: list[dict[str, Any]] = []
+    for item in emails:
+        email = str(item.get("email") or "")
+        if email_domain_relation(email, scope_url) is None:
+            excluded.append({**item, "reason": "third_party_domain"})
+        else:
+            kept_emails.append(item)
+    kept_forms = [
+        item for item in contact_forms
+        if item.get("url") and same_site(item["url"], scope_url)
+    ]
+    return kept_emails, kept_forms, excluded
+
+
 DOH_URL = "https://cloudflare-dns.com/dns-query"
 MAX_DOH_BYTES = 64 * 1024
 _DOH_CACHE: dict[str, frozenset[str]] = {}
@@ -730,7 +808,6 @@ def crawl_company(
     seen: set[str] = set()
     pages: list[dict[str, Any]] = []
     errors: list[dict[str, str]] = []
-    external_contact_urls: list[str] = []
     attempts = 0
     link_groups: dict[str, str | None] = {}
     about_visits = 0
@@ -790,14 +867,6 @@ def crawl_company(
             errors.append({'url': fetched.final_url, 'reason': f'HTTP status {fetched.status_code}', 'category': 'http_status'})
             continue
 
-        for link in parsed["links"]:
-            if same_site(link["url"], fetched.final_url):
-                continue
-            if _shared_host(urlparse(fetched.final_url).hostname or '') and _shared_host(urlparse(link['url']).hostname or ''):
-                continue  # A neighbouring tenant is not this company's external form.
-            haystack = f"{link['url']} {link.get('text', '')}".lower()
-            if any(hint in haystack for hint in CONTACT_HINTS):
-                external_contact_urls.append(link["url"])
         for link in priority_links(
             parsed["links"], fetched.final_url, group_order=priority_groups, exclude_urls=seen
         ):
@@ -827,10 +896,10 @@ def crawl_company(
             emails.append(item)
         if page["has_form"]:
             contact_forms.append({"url": page["url"], "verification": "form_found"})
-    for url in dict.fromkeys(external_contact_urls):
-        contact_forms.append({"url": url, "verification": "linked_from_official_site"})
 
     first_page = next((p for p in pages if p['status_code'] is not None and 200 <= p['status_code'] < 300), None)
+    contact_scope = effective_scope or (company_root_url(first_page['url']) if first_page else canonicalize_url(start_url))
+    emails, contact_forms, excluded_emails = filter_company_contacts(emails, contact_forms, contact_scope)
     return {
         "candidate": candidate,
         "canonical_url": (
@@ -842,6 +911,7 @@ def crawl_company(
         "pages": pages,
         "emails": emails,
         "contact_forms": contact_forms,
+        "excluded_emails": excluded_emails,
         "errors": errors,
         "checked_at": utc_now(),
     }
@@ -935,6 +1005,18 @@ def finalize_record(
     scope_url = crawl.get('company_scope_url') or crawl.get('canonical_url') or (crawl.get('candidate') or {}).get('url')
     if scope_url and (crawl.get('company_scope_url') or _shared_host(urlparse(scope_url).hostname or '')):
         pages = [p for p in pages if p.get('url') and same_site(p['url'], scope_url)]
+    contact_scope = crawl.get('company_scope_url') or crawl.get('canonical_url') or (crawl.get('candidate') or {}).get('url')
+    if contact_scope:
+        # Re-check saved crawls so older checkpoints cannot export third-party contacts.
+        emails, contact_forms, excluded_emails = filter_company_contacts(
+            crawl.get("emails") or [], crawl.get("contact_forms") or [], contact_scope
+        )
+    else:
+        emails, contact_forms, excluded_emails = [], [], list(crawl.get("emails") or [])
+    known_excluded = {item.get("email") for item in excluded_emails}
+    excluded_emails.extend(
+        item for item in crawl.get("excluded_emails") or [] if item.get("email") not in known_excluded
+    )
     valid_claims, claim_errors = validate_claims(assessment.get("claims"), pages)
     exclusion_checks, exclusion_errors = validate_exclusion_checks(
         assessment.get("exclusion_checks"), campaign
@@ -989,8 +1071,9 @@ def finalize_record(
         "country": assessment.get("country"),
         "company_type": assessment.get("company_type"),
         "company_overview_ja": assessment.get("company_overview_ja"),
-        "emails": crawl.get("emails") or [],
-        "contact_forms": crawl.get("contact_forms") or [],
+        "emails": emails,
+        "contact_forms": contact_forms,
+        "excluded_emails": excluded_emails,
         "assessment_recommendation": recommendation,
         "verification_status": status,
         "claims": valid_claims,

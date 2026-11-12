@@ -151,6 +151,97 @@ class LeadLibraryTests(unittest.TestCase):
             )
         self.assertEqual(crawl["emails"], [{"email": "sales@example.com", "source_url": "https://example.com/"}])
 
+    def test_accessibility_page_authority_contacts_are_not_company_contacts(self):
+        home = """
+        <html><head><title>Honest Catch GmbH</title></head><body>
+          <p>Honest Catch GmbH imports premium seafood and wagyu for restaurants in Germany.</p>
+          <p>Kontakt: <a href="mailto:info@honest-catch.com">info@honest-catch.com</a></p>
+          <a href="/barrierefreiheit">Erklaerung zur Barrierefreiheit</a>
+          <a href="/kontakt">Kontakt</a>
+          <a href="https://www.instagram.com/honestcatch/contact">Instagram contact</a>
+        </body></html>
+        """
+        accessibility = """
+        <html><head><title>Barrierefreiheit | Honest Catch GmbH</title></head><body>
+          <p>Erklaerung zur Barrierefreiheit der Website der Honest Catch GmbH.</p>
+          <p>Durchsetzungsstelle: Landesamt fuer Digitalisierung, E-Mail bitv@ldbv.bayern.de</p>
+          <p>Beratung: <a href="mailto:kontakt@mlbf-barrierefrei.de">kontakt@mlbf-barrierefrei.de</a></p>
+          <a href="https://ms.sachsen-anhalt.de/themen/menschen-mit-behinderungen/kontakt">Kontakt Schlichtungsstelle</a>
+        </body></html>
+        """
+        contact = """
+        <html><head><title>Kontakt | Honest Catch GmbH</title></head><body>
+          <p>Schreiben Sie uns.</p>
+          <form action="/kontakt"><input name="name"><input name="email">
+          <textarea name="message"></textarea><button>Nachricht senden</button></form>
+        </body></html>
+        """
+        pages = {
+            "https://honest-catch.com/": home,
+            "https://honest-catch.com/barrierefreiheit": accessibility,
+            "https://honest-catch.com/kontakt": contact,
+        }
+
+        def fake_fetch(url, **_kwargs):
+            return leadlib.FetchResult(pages[url], url, "static", 200), leadlib.parse_site(pages[url], url)
+
+        with patch.object(leadlib, "robots_allows", return_value=True), patch.object(
+            leadlib, "fetch_page", side_effect=fake_fetch
+        ), patch.object(
+            leadlib,
+            "priority_links",
+            side_effect=[["https://honest-catch.com/barrierefreiheit", "https://honest-catch.com/kontakt"], [], []],
+        ):
+            crawl = leadlib.crawl_company({"url": "https://honest-catch.com/"}, max_pages=3, delay_seconds=0)
+
+        self.assertEqual([item["email"] for item in crawl["emails"]], ["info@honest-catch.com"])
+        self.assertEqual(
+            sorted(item["email"] for item in crawl["excluded_emails"]),
+            ["bitv@ldbv.bayern.de", "kontakt@mlbf-barrierefrei.de"],
+        )
+        self.assertEqual(
+            crawl["contact_forms"], [{"url": "https://honest-catch.com/kontakt", "verification": "form_found"}]
+        )
+        for form in crawl["contact_forms"]:
+            self.assertTrue(leadlib.same_site(form["url"], "https://honest-catch.com/"))
+
+    def test_finalize_drops_third_party_contacts_from_saved_crawls(self):
+        crawl = {
+            "candidate": {"url": "https://kreutzers.eu/"},
+            "canonical_url": "https://kreutzers.eu/",
+            "final_url": "https://kreutzers.eu/",
+            "site_status": "active",
+            "pages": [],
+            "emails": [
+                {"email": "info@kreutzers.eu", "source_url": "https://kreutzers.eu/impressum"},
+                {"email": "bitv@ldbv.bayern.de", "source_url": "https://kreutzers.eu/barrierefreiheit"},
+            ],
+            "contact_forms": [
+                {"url": "https://kreutzers.eu/kontakt", "verification": "form_found"},
+                {
+                    "url": "https://ms.sachsen-anhalt.de/themen/menschen-mit-behinderungen/kontakt",
+                    "verification": "linked_from_official_site",
+                },
+            ],
+            "checked_at": "2026-11-12T00:00:00+00:00",
+        }
+        record = leadlib.finalize_record(crawl, {"recommendation": "review", "claims": []})
+        self.assertEqual([item["email"] for item in record["emails"]], ["info@kreutzers.eu"])
+        self.assertEqual([item["url"] for item in record["contact_forms"]], ["https://kreutzers.eu/kontakt"])
+        self.assertEqual([item["email"] for item in record["excluded_emails"]], ["bitv@ldbv.bayern.de"])
+
+    def test_related_brand_domains_and_free_mail_are_kept(self):
+        relation = leadlib.email_domain_relation
+        self.assertEqual(relation("info@mashsteak.de", "https://mashsteak.de/"), "company_domain")
+        self.assertEqual(relation("cph@mashsteak.dk", "https://www.mashsteak.de/"), "related_domain")
+        self.assertEqual(relation("sales@shop.example.co.uk", "https://example.com/"), "related_domain")
+        self.assertEqual(relation("events@berlin.mashsteak.de", "https://mashsteak.de/"), "company_domain")
+        self.assertEqual(relation("kreutzers.steak@gmail.com", "https://kreutzers.eu/"), "free_mail")
+        self.assertIsNone(relation("bitv@ldbv.bayern.de", "https://mashsteak.de/"))
+        self.assertIsNone(relation("kontakt@mlbf-barrierefrei.de", "https://honest-catch.com/"))
+        self.assertIsNone(relation("info@other-steak.de", "https://mashsteak.de/"))
+        self.assertEqual(relation("info@nns.ne.jp", "https://www.nns.ne.jp/~tenant/"), "company_domain")
+
     def test_private_urls_and_unsafe_schemes_are_rejected(self):
         for url in ("http://localhost/", "http://127.0.0.1/", "file:///etc/passwd"):
             with self.assertRaises(ValueError):

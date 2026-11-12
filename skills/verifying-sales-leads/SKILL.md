@@ -47,7 +47,7 @@ The default browser is the installed pinned normal Chromium (`VLR_BROWSER_CHANNE
 - A reachable website proves only that the site was active and internally consistent at verification time. Do not claim legal incorporation unless an authoritative registry was checked.
 - Explicit HTTP error or missing-response pages cannot support acceptance, even when a browser retrieved their HTML. For shared providers, evidence must remain inside the selected company path; a neighbour's address, work, or contact form is not transferable.
 - Unresolved decoding corruption is saved as `content_quality=unresolved`; do not use that page as evidence. Browser-loaded child frames are blocked from automatic navigation and are checked through the ordinary bounded, company-scoped, robots-checked queue instead.
-- Extract email addresses only when they are publicly displayed in retrieved content. Never synthesize addresses from naming conventions.
+- Extract email addresses only when they are publicly displayed in retrieved content. Never synthesize addresses from naming conventions. Third-party addresses (for example accessibility authorities on an accessibility statement) and contact forms off the company's site are excluded automatically.
 - Treat contact-form discovery as optional best effort. Record only a clearly identified form found within the normal five-page review; do not add extra crawling or interactive clicking just to find one. A missing form never lowers a company's verification status.
 - Treat an MX record as domain-level mail capability, not proof that a mailbox exists.
 - Record inaccessible sites as `blocked` or `unknown`; do not treat access failure as proof that a company does not exist.
