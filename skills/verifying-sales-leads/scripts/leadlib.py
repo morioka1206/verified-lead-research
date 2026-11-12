@@ -334,6 +334,50 @@ def validate_public_url(
     return canonical
 
 
+HTTP_ONLY_PROXY_REASON = "http-only site cannot be reached through the HTTPS-only proxy"
+
+
+class HttpOnlyProxyError(RuntimeError):
+    """An http:// site has no working https:// form and no HTTP proxy can reach it."""
+
+
+def _https_only_proxy() -> bool:
+    proxies = getproxies()
+    return bool(proxies.get("https")) and not proxies.get("http")
+
+
+def _local_dns_resolves(hostname: str) -> bool:
+    try:
+        socket.getaddrinfo(hostname, 80)
+    except socket.gaierror:
+        return False
+    return True
+
+
+def https_upgrade_url(url: str) -> str:
+    """Return the https:// form of an http:// URL with the same host and path."""
+    parsed = urlparse(url)
+    netloc = parsed.netloc
+    if parsed.port == 80:
+        netloc = netloc.rsplit(":", 1)[0]
+    return urlunparse(parsed._replace(scheme="https", netloc=netloc))
+
+
+def needs_https_upgrade(url: str) -> bool:
+    """True when an http:// URL cannot be fetched directly but its https form may be.
+
+    This is the Claude Code cloud session case: local DNS is unavailable and only an
+    HTTPS proxy is configured, so a plain http:// request fails with a DNS error.
+    Machines with working local DNS or an HTTP proxy keep the original URL.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme.lower() != "http" or parsed.port not in {None, 80}:
+        return False
+    if not _https_only_proxy():
+        return False
+    return not _local_dns_resolves(parsed.hostname or "")
+
+
 class SafeRedirectHandler(HTTPRedirectHandler):
     def __init__(self, *, allow_private: bool = False) -> None:
         super().__init__()
@@ -390,6 +434,8 @@ def robots_text_allows(robots_text: str, target_url: str) -> bool:
 
 
 def robots_allows(url: str, *, timeout: float = 10.0, allow_private: bool = False) -> bool:
+    if needs_https_upgrade(url):
+        url = https_upgrade_url(url)
     parsed = urlparse(validate_public_url(url, allow_private=allow_private))
     robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
     try:
@@ -636,6 +682,40 @@ def fetch_page(
     browser_fallback: bool = True,
     allow_private: bool = False,
 ) -> tuple[FetchResult, dict[str, Any]]:
+    if not needs_https_upgrade(url):
+        return _fetch_page_once(url, timeout=timeout, browser_fallback=browser_fallback, allow_private=allow_private)
+    # Only HTTPS leaves this machine: try the same host and path over https (with
+    # normal certificate verification) before giving up on an http:// site.
+    upgraded = https_upgrade_url(url)
+    try:
+        return _fetch_page_once(upgraded, timeout=timeout, browser_fallback=browser_fallback, allow_private=allow_private)
+    except (HTTPException, URLError, OSError, ValueError, RuntimeError) as exc:
+        if not _connection_failure(exc):
+            raise  # https answered (HTTP status, content type, size...): report it as is.
+        raise HttpOnlyProxyError(f"{HTTP_ONLY_PROXY_REASON} ({upgraded} failed: {exc})") from exc
+
+
+_BROWSER_CONNECTION_ERROR = re.compile(
+    r"net::ERR_(NAME_NOT_RESOLVED|CONNECTION_\w+|CERT_\w+|SSL_\w+|BAD_SSL_\w+|TIMED_OUT|TUNNEL_\w+|ADDRESS_\w+|PROXY_\w+|EMPTY_RESPONSE)"
+)
+
+
+def _connection_failure(exc: Exception) -> bool:
+    """True when no usable https connection was made (DNS, refused, reset, TLS)."""
+    if isinstance(exc, (BrowserEnvironmentError, HTTPError, ValueError)):
+        return False
+    if isinstance(exc, RuntimeError):
+        return bool(_BROWSER_CONNECTION_ERROR.search(str(exc)))
+    return isinstance(exc, (HTTPException, URLError, OSError))
+
+
+def _fetch_page_once(
+    url: str,
+    *,
+    timeout: float,
+    browser_fallback: bool,
+    allow_private: bool,
+) -> tuple[FetchResult, dict[str, Any]]:
     static_error: Exception | None = None
     try:
         result = static_fetch(url, timeout=timeout, allow_private=allow_private)
@@ -761,7 +841,8 @@ def crawl_company(
                 allow_private=allow_private,
             )
         except (HTTPException, HTTPError, URLError, OSError, ValueError, RuntimeError) as exc:
-            errors.append({"url": requested_url, "reason": str(exc), "category": 'browser_environment' if isinstance(exc, BrowserEnvironmentError) else 'retrieval'})
+            category = 'browser_environment' if isinstance(exc, BrowserEnvironmentError) else 'http_only_proxy' if isinstance(exc, HttpOnlyProxyError) else 'retrieval'
+            errors.append({"url": requested_url, "reason": str(exc), "category": category})
             continue
 
         if effective_scope and not same_site(effective_scope, fetched.final_url):
