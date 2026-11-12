@@ -99,6 +99,40 @@ class RetrievalRecoveryTests(unittest.TestCase):
         claim = {'type':'product','evidence_url':page['url'],'evidence_text_original':page['text']}
         self.assertFalse(leadlib.evidence_exists(claim, [page]))
 
+    def test_http_url_uses_https_behind_https_only_proxy(self):
+        https_only = {'https': 'http://127.0.0.1:3128'}
+        with patch.object(leadlib, 'getproxies', return_value=https_only), patch.object(leadlib, 'proxy_bypass', return_value=False):
+            self.assertEqual(leadlib.proxy_reachable_url('http://shop.example/menu?a=1'), 'https://shop.example/menu?a=1')
+            self.assertEqual(leadlib.proxy_reachable_url('http://shop.example:80/'), 'https://shop.example/')
+            self.assertEqual(leadlib.proxy_reachable_url('https://shop.example/'), 'https://shop.example/')
+        with patch.object(leadlib, 'getproxies', return_value=https_only), patch.object(leadlib, 'proxy_bypass', return_value=True):
+            self.assertEqual(leadlib.proxy_reachable_url('http://127.0.0.1:8000/'), 'http://127.0.0.1:8000/')
+        for proxies in ({}, {'https': 'http://p:1', 'http': 'http://p:1'}):
+            with patch.object(leadlib, 'getproxies', return_value=proxies):
+                self.assertEqual(leadlib.proxy_reachable_url('http://shop.example/'), 'http://shop.example/')
+
+        calls = []
+        def fake_fetch(url, **_kw):
+            calls.append(url)
+            return leadlib.FetchResult('<p>ok</p>', url, 'static', 200), {'text': 'ok'}
+        with patch.object(leadlib, 'getproxies', return_value=https_only), patch.object(leadlib, 'proxy_bypass', return_value=False), patch.object(leadlib, '_fetch_page', side_effect=fake_fetch):
+            result, _ = leadlib.fetch_page('http://shop.example/')
+        self.assertEqual(calls, ['https://shop.example/'])
+        self.assertEqual(result.final_url, 'https://shop.example/')
+
+    def test_http_only_site_gets_explicit_reason(self):
+        def broken(url, **_kw):
+            raise OSError('certificate verify failed: self-signed certificate')
+        with patch.object(leadlib, 'getproxies', return_value={'https': 'http://127.0.0.1:3128'}), patch.object(leadlib, 'proxy_bypass', return_value=False), patch.object(leadlib, '_fetch_page', side_effect=broken):
+            with self.assertRaises(leadlib.HttpOnlySiteError) as ctx:
+                leadlib.fetch_page('http://shop.example/')
+        self.assertIn('HTTPS-only proxy', str(ctx.exception))
+        def denied(url, **_kw):
+            raise leadlib.HTTPError(url, 403, 'Forbidden', {}, None)
+        with patch.object(leadlib, 'getproxies', return_value={'https': 'http://127.0.0.1:3128'}), patch.object(leadlib, 'proxy_bypass', return_value=False), patch.object(leadlib, '_fetch_page', side_effect=denied):
+            with self.assertRaises(leadlib.HTTPError):
+                leadlib.fetch_page('http://shop.example/')
+
     def test_http_error_crawl_is_not_active(self):
         c = self.crawl({'https://example.com/': ('Service unavailable', 500)})
         self.assertEqual(c['site_status'], 'blocked')

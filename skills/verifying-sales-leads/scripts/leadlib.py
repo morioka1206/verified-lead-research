@@ -20,7 +20,7 @@ import time
 from typing import Any, Callable, Iterable
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, unquote, urlencode, urljoin, urlparse, urlunparse
-from urllib.request import HTTPRedirectHandler, Request, build_opener, getproxies
+from urllib.request import HTTPRedirectHandler, Request, build_opener, getproxies, proxy_bypass
 from urllib.robotparser import RobotFileParser
 
 
@@ -390,7 +390,7 @@ def robots_text_allows(robots_text: str, target_url: str) -> bool:
 
 
 def robots_allows(url: str, *, timeout: float = 10.0, allow_private: bool = False) -> bool:
-    parsed = urlparse(validate_public_url(url, allow_private=allow_private))
+    parsed = urlparse(validate_public_url(proxy_reachable_url(url), allow_private=allow_private))
     robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
     try:
         opener = build_opener(SafeRedirectHandler(allow_private=allow_private))
@@ -629,7 +629,60 @@ def playwright_fetch(url: str, *, timeout: float = 20.0, allow_private: bool = F
     return FetchResult(content, final_url, "playwright", status)
 
 
+def https_only_proxy() -> bool:
+    """True when outbound traffic must use an HTTPS proxy and no HTTP proxy exists.
+
+    Claude Code cloud sessions work this way: plain http:// requests try a direct
+    connection, which has no DNS or route, so they can never succeed there.
+    """
+    proxies = getproxies()
+    return bool(proxies.get("https")) and not proxies.get("http")
+
+
+def proxy_reachable_url(url: str) -> str:
+    """Return the https:// form of an http:// URL when only an HTTPS proxy is available."""
+    parsed = urlparse(url)
+    if parsed.scheme != "http" or not https_only_proxy() or proxy_bypass(parsed.hostname or ""):
+        return url
+    netloc = parsed.hostname or ""
+    if ":" in netloc:
+        netloc = f"[{netloc}]"
+    if parsed.port not in {None, 80}:
+        netloc = f"{netloc}:{parsed.port}"
+    return urlunparse(parsed._replace(scheme="https", netloc=netloc))
+
+
+class HttpOnlySiteError(RuntimeError):
+    """An http:// site could not be reached over https through an HTTPS-only proxy."""
+
+
 def fetch_page(
+    url: str,
+    *,
+    timeout: float = 15.0,
+    browser_fallback: bool = True,
+    allow_private: bool = False,
+) -> tuple[FetchResult, dict[str, Any]]:
+    reachable = proxy_reachable_url(url)
+    if reachable == url:
+        return _fetch_page(url, timeout=timeout, browser_fallback=browser_fallback, allow_private=allow_private)
+    try:
+        return _fetch_page(reachable, timeout=timeout, browser_fallback=browser_fallback, allow_private=allow_private)
+    except HTTPError as exc:
+        if exc.code in {401, 403, 429}:
+            raise
+        raise HttpOnlySiteError(
+            f"http-only site cannot be reached through the HTTPS-only proxy; https attempt returned HTTP {exc.code}"
+        ) from exc
+    except BrowserEnvironmentError:
+        raise
+    except Exception as exc:
+        raise HttpOnlySiteError(
+            f"http-only site cannot be reached through the HTTPS-only proxy; https attempt failed: {exc}"
+        ) from exc
+
+
+def _fetch_page(
     url: str,
     *,
     timeout: float = 15.0,
