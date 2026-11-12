@@ -10,6 +10,8 @@ Claude Codeでは、部品の準備後に配布フォルダから `claude --plug
 
 Codexの方は [Codex専用の導入手順](https://morioka1206.github.io/verified-lead-research/#install-codex) をご覧ください。Mac／Windowsの準備、同梱スクリプトでの登録、読み込み確認、更新、アプリの版による配置先の違いを説明しています。実行はローカルPC向けです。スマホ・iPadではマニュアルや完成した表を閲覧できますが、端末上でこのSkillを直接実行する構成ではありません。
 
+PCに何も入れずにクラウド版Claude Code（claude.ai/code）で実行する方法は [クラウド版の手順](docs/cloud-claude-code.md) にあります。
+
 配布ZIPのリンクはmainの現在の内容を取得します。本番へ更新をプッシュすると同じリンクから新しいZIPを取得できますが、すでに展開したフォルダは自動更新されません。
 
 更新方法はアプリと導入方式で異なります。Claude CodeのPlugin方式は、新しいフォルダで準備・診断してから起動します。Codex用Skillを別のZIPフォルダへ移す場合は、新しいフォルダの登録スクリプトで `--codex-only --show-source` を実行し、自分の以前の登録元を確認してから `--codex-only --previous-source "以前のSkillフォルダの絶対パス"` を指定します。旧Skillは `skill-backups/` へ退避し、失敗時は復元します。既存の調査データや無関係なSkillを削除して進めないでください。OS別の入力例は公開マニュアルのCodex欄にあります。
