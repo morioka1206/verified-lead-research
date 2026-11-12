@@ -1,0 +1,1 @@
+../../agents/lead-scout.md

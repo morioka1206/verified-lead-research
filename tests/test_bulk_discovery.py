@@ -255,6 +255,33 @@ class BuildAssessmentsTests(unittest.TestCase):
         _, errors = build_assessments.build(CAMPAIGN, crawls, decisions)
         self.assertTrue(any("reused by 7" in e for e in errors))
 
+    def test_split_keeps_indices_and_balances_parts(self):
+        pre = {"for_ai": [{"index": i, "candidate_url": f"https://s{i}.example/"} for i in range(7)]}
+        chunks = prescreen.split(pre, 3)
+        self.assertEqual([[item["index"] for item in c] for c in chunks], [[0, 1, 2], [3, 4], [5, 6]])
+        self.assertEqual(len(prescreen.split(pre, 20)), 7)
+        self.assertEqual(prescreen.split({"for_ai": []}, 3), [])
+        with self.assertRaises(ValueError):
+            prescreen.split(pre, 0)
+
+    def test_cli_combines_decision_parts_from_parallel_assessors(self):
+        import subprocess
+        crawls = [record(f"https://m{i}.example/", [page(f"https://m{i}.example/", f"Matcha Latte $5 at cafe {i}, Austin, TX 78701")]) for i in range(2)]
+        parts = [[{"index": i, "recommendation": "review", "claims": [],
+                   "exclusions": [["not_matched", f"店舗{i}は競合ではない。"], ["not_matched", f"店舗{i}はメディアではない。"]]}] for i in range(2)]
+        with TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            (base / "campaign.json").write_text(json.dumps(CAMPAIGN, ensure_ascii=False), encoding="utf-8")
+            (base / "crawls.json").write_text(json.dumps(crawls), encoding="utf-8")
+            args = [sys.executable, str(SCRIPTS / "build_assessments.py"), "--campaign", str(base / "campaign.json"),
+                    "--crawls", str(base / "crawls.json"), "--output", str(base / "out.json")]
+            for k, part in enumerate(parts):
+                (base / f"d{k}.json").write_text(json.dumps(part, ensure_ascii=False), encoding="utf-8")
+                args += ["--decisions", str(base / f"d{k}.json")]
+            subprocess.run(args, check=True, capture_output=True)
+            out = json.loads((base / "out.json").read_text(encoding="utf-8"))
+        self.assertEqual([a["candidate_url"] for a in out], ["https://m0.example/", "https://m1.example/"])
+
 
 if __name__ == "__main__":
     unittest.main()

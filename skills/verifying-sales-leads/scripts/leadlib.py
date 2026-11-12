@@ -9,6 +9,7 @@ from html.parser import HTMLParser
 from http.client import HTTPException
 import html
 import ipaddress
+import json
 import math
 import os
 from pathlib import Path
@@ -18,8 +19,8 @@ import socket
 import time
 from typing import Any, Callable, Iterable
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote, unquote, urljoin, urlparse, urlunparse
-from urllib.request import HTTPRedirectHandler, Request, build_opener
+from urllib.parse import quote, unquote, urlencode, urljoin, urlparse, urlunparse
+from urllib.request import HTTPRedirectHandler, Request, build_opener, getproxies
 from urllib.robotparser import RobotFileParser
 
 
@@ -257,11 +258,55 @@ def same_site(left: str, right: str) -> bool:
     return left_host == right_host or left_host.endswith(f".{right_host}") or right_host.endswith(f".{left_host}")
 
 
+DOH_URL = "https://cloudflare-dns.com/dns-query"
+MAX_DOH_BYTES = 64 * 1024
+_DOH_CACHE: dict[str, frozenset[str]] = {}
+
+
+def doh_resolve(hostname: str, *, timeout: float = 10.0) -> set[str]:
+    """Resolve A/AAAA records with DNS-over-HTTPS through the configured proxy.
+
+    Used only when local DNS is unavailable but an HTTPS proxy is configured,
+    as in Claude Code cloud sessions. Callers still apply the public-address check.
+    """
+    key = hostname.lower().rstrip(".")
+    if key in _DOH_CACHE:
+        return set(_DOH_CACHE[key])
+    addresses: set[str] = set()
+    opener = build_opener()
+    for record_type in ("A", "AAAA"):
+        request = Request(
+            f"{DOH_URL}?{urlencode({'name': key, 'type': record_type})}",
+            headers={"Accept": "application/dns-json", "User-Agent": USER_AGENT},
+        )
+        try:
+            with opener.open(request, timeout=timeout) as response:
+                payload = json.loads(read_limited(response, MAX_DOH_BYTES).decode("utf-8"))
+        except (HTTPException, URLError, OSError, ValueError):
+            continue
+        for answer in payload.get("Answer") or []:
+            if not isinstance(answer, dict) or answer.get("type") not in {1, 28}:
+                continue
+            try:
+                addresses.add(str(ipaddress.ip_address(str(answer.get("data", "")).strip())))
+            except ValueError:
+                continue
+    _DOH_CACHE[key] = frozenset(addresses)
+    return addresses
+
+
+def _default_fallback_resolver(hostname: str) -> set[str]:
+    if not getproxies().get("https"):
+        return set()
+    return doh_resolve(hostname)
+
+
 def validate_public_url(
     url: str,
     *,
     allow_private: bool = False,
     resolver: Callable[..., Any] = socket.getaddrinfo,
+    fallback_resolver: Callable[[str], set[str]] | None = _default_fallback_resolver,
 ) -> str:
     canonical = canonicalize_url(url)
     parsed = urlparse(canonical)
@@ -277,7 +322,9 @@ def validate_public_url(
     try:
         addresses = {item[4][0] for item in resolver(hostname, parsed.port or (443 if parsed.scheme == "https" else 80))}
     except socket.gaierror as exc:
-        raise ValueError(f"Hostname could not be resolved: {exc}") from exc
+        addresses = fallback_resolver(hostname) if fallback_resolver else set()
+        if not addresses:
+            raise ValueError(f"Hostname could not be resolved: {exc}") from exc
     if not addresses:
         raise ValueError("Hostname did not resolve to an address")
     if not allow_private:
