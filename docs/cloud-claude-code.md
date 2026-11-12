@@ -48,7 +48,16 @@ Claude Codeでは、会話のモデル（Opusなど）が条件のヒアリン�
 
 補助エージェントが書いた証拠も、これまでどおりプログラムが原文と照合します。軽いモデルの判断が甘くても、証拠がそろわない会社は合格になりません。詳しい流れは `skills/verifying-sales-leads/references/model-delegation.md` にあります。PCの `claude --plugin-dir .` でも同じエージェントが使えます。
 
+## 米国以外の国を調べるとき
+
+Claude Codeに組み込まれた検索は米国向けの結果しか返しません。ほかの国では次を使います。
+
+- 精肉店・飲食店・カフェなど店舗型の相手：OpenStreetMapから取り込みます（`import_osm.py --area DE-BY` など）。本家のサーバーがクラウドからの接続を切る場合は、自動で公開ミラーに切り替えます。
+- 輸入・卸会社など地図に載りにくい相手：国を指定できるBrave Search API（`search_web.py --country DE --lang de`）を使います。BraveのAPIキーが必要です。クラウドでは、Claudeが出す入力欄から `api.search.brave.com` 用の秘密情報として保存すると、キーが会話に表示されずに使われます。
+
 ## 注意
+
+- クラウドのプロキシはHTTPSだけを通します。`http://` のサイトは自動で `https://` に切り替えて取得し、それでも開けない場合は「httpのみのサイト」と記録します。
 
 - クラウドではホスト名を手元で名前解決できないため、名前解決できない時だけDNS-over-HTTPS（Cloudflare）でアドレスを調べ、公開アドレスかどうかを従来どおり確認します。調査先のホスト名がCloudflareのDNSに送られます。
 

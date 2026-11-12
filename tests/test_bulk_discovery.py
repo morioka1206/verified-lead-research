@@ -3,6 +3,7 @@ from pathlib import Path
 import sys
 from tempfile import TemporaryDirectory
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "skills" / "verifying-sales-leads" / "scripts"
@@ -254,6 +255,21 @@ class BuildAssessmentsTests(unittest.TestCase):
                       "exclusions": [["not_matched", "定型の理由文です。"], ["not_matched", f"店舗{i}の固有の理由。"]]} for i in range(7)]
         _, errors = build_assessments.build(CAMPAIGN, crawls, decisions)
         self.assertTrue(any("reused by 7" in e for e in errors))
+
+    def test_overpass_falls_back_to_mirror(self):
+        tried = []
+
+        def fake(query, endpoint, timeout):
+            tried.append(endpoint)
+            if endpoint == "https://main.example/api":
+                raise OSError("connection reset")
+            return {"elements": []}
+
+        with patch.object(import_osm, "fetch_overpass", side_effect=fake):
+            self.assertEqual(import_osm.fetch_with_fallback("q", ["https://main.example/api", "https://mirror.example/api"], 10), {"elements": []})
+            self.assertEqual(tried, ["https://main.example/api", "https://mirror.example/api"])
+            with self.assertRaises(OSError):
+                import_osm.fetch_with_fallback("q", ["https://main.example/api"], 10)
 
     def test_split_keeps_indices_and_balances_parts(self):
         pre = {"for_ai": [{"index": i, "candidate_url": f"https://s{i}.example/"} for i in range(7)]}
