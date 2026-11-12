@@ -30,6 +30,8 @@ from typing import Any, Iterable
 from leadlib import canonicalize_url, company_key
 
 DEFAULT_ENDPOINT = "https://overpass-api.de/api/interpreter"
+# Public mirror tried when the main server refuses or times out (seen from cloud sessions).
+FALLBACK_ENDPOINTS = ("https://maps.mail.ru/osm/tools/overpass/api/interpreter",)
 USER_AGENT = "verified-lead-research/1.0 (OSM candidate import)"
 
 US_STATES = [
@@ -64,6 +66,18 @@ def build_query(tags: list[tuple[str, str]], area: str, timeout: int) -> str:
         f'area["ISO3166-2"="{area}"][admin_level=4]->.a;\n'
         f"(\n{selectors});\nout tags;\n"
     )
+
+
+def fetch_with_fallback(query: str, endpoints: list[str], timeout: int) -> dict[str, Any]:
+    """Try each endpoint in order; raise the last error if all fail."""
+    last: Exception | None = None
+    for endpoint in endpoints:
+        try:
+            return fetch_overpass(query, endpoint, timeout)
+        except Exception as exc:  # try the next mirror
+            last = exc
+            print(f"  {endpoint} failed: {str(exc)[:120]}", file=sys.stderr)
+    raise last or RuntimeError("no Overpass endpoint configured")
 
 
 def fetch_overpass(query: str, endpoint: str, timeout: int) -> dict[str, Any]:
@@ -188,7 +202,8 @@ def main() -> int:
     parser.add_argument("--max-locations", type=int, default=0,
                         help="Skip websites shared by more than this many OSM places (0 = keep chains)")
     parser.add_argument("--limit", type=int, default=0, help="Stop after this many new candidates (0 = no limit)")
-    parser.add_argument("--endpoint", default=DEFAULT_ENDPOINT)
+    parser.add_argument("--endpoint", action="append",
+                        help="Overpass endpoint; repeat to set the fallback order (default: main server, then a public mirror)")
     parser.add_argument("--timeout", type=int, default=120)
     parser.add_argument("--pause", type=float, default=5.0, help="Seconds between Overpass requests")
     parser.add_argument("--raw-dir", type=Path, help="Save raw Overpass responses here for audit")
@@ -204,6 +219,7 @@ def main() -> int:
     results: list[dict[str, Any]] = []
     seen = set(excluded)
     failures = []
+    endpoints = args.endpoint or [DEFAULT_ENDPOINT, *FALLBACK_ENDPOINTS]
     if args.output.exists():
         previous = json.loads(args.output.read_text(encoding="utf-8"))
         results.extend(previous)
@@ -215,7 +231,7 @@ def main() -> int:
             time.sleep(args.pause)
         query = build_query(tags, area, args.timeout)
         try:
-            payload = fetch_overpass(query, args.endpoint, args.timeout)
+            payload = fetch_with_fallback(query, endpoints, args.timeout)
         except Exception as exc:  # network errors are reported, not fatal
             failures.append({"area": area, "error": str(exc)[:200]})
             print(f"[{area}] failed: {exc}", file=sys.stderr)

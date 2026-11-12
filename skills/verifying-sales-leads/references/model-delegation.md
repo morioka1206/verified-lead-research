@@ -18,6 +18,11 @@ Delegation never changes the acceptance gate. Assessors only write decisions; `b
 
 Write the localized queries yourself, then give each `lead-scout` a few queries, the campaign's `excluded_types`, and its own output file, e.g. `runs/<run>/raw-candidates-1.json`. Combine the files as one JSON array and run `prepare_candidates.py`, which normalizes and deduplicates. Glance at the list before crawling; drop obvious non-companies.
 
+The client's built-in web search can be limited to one country (in Claude Code it is US-only), which leaves out most local businesses elsewhere. For other markets:
+
+- **Storefront buyers** (butchers, restaurants, cafes, shops): import from OpenStreetMap with `import_osm.py --area <ISO3166-2>` (for Germany `DE-BY`, `DE-BE`, …). It falls back to a public Overpass mirror when the main server refuses or times out; rerun the same command with the same `--output` later to fill states that timed out.
+- **Companies rarely on maps** (importers, wholesalers, brands): pass the scout `python`, `scripts`, `country` (e.g. `DE`) and `lang` (e.g. `de`) so it runs `scripts/search_web.py`, a country-targeted Brave Search API client. It needs `BRAVE_SEARCH_API_KEY`, or in a cloud session a network secret for `api.search.brave.com` with header `X-Subscription-Token`. If neither is available, say so instead of relying on the built-in search for that market.
+
 ## Assessment
 
 After crawling (standard mode: `runs/<run>/crawl.json`; batch mode: the batch's crawl file):
