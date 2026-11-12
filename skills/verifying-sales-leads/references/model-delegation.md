@@ -18,7 +18,7 @@ Delegation never changes the acceptance gate. Assessors only write decisions; `b
 
 Write the localized queries yourself, then give each `lead-scout` a few queries, the campaign's `excluded_types`, and its own output file, e.g. `runs/<run>/raw-candidates-1.json`. Combine the files as one JSON array and run `prepare_candidates.py`, which normalizes and deduplicates. Glance at the list before crawling; drop obvious non-companies.
 
-The client's built-in web search can be limited to one country (in Claude Code it is US-only). Choose the method per market and buyer type with [discovery-methods.md](discovery-methods.md). For country-targeted search, pass the scout `python`, `scripts`, `country` (e.g. `DE`) and `lang` (e.g. `de`) so it runs `scripts/search_web.py`. It needs `BRAVE_SEARCH_API_KEY`, or in a cloud session a network secret for `api.search.brave.com` with header `X-Subscription-Token`. If neither is available, say so instead of relying on the built-in search for that market.
+The client's built-in web search can be limited to one country. Choose the method per market and buyer type with [discovery-methods.md](discovery-methods.md). For country-targeted search, pass the scout `python`, `scripts`, `country` (e.g. `DE`) and `lang` (e.g. `de`) so it runs `scripts/search_web.py`. It needs `BRAVE_SEARCH_API_KEY`, or in a cloud session a network secret for `api.search.brave.com` with header `X-Subscription-Token`. If neither is available, say so instead of relying on the built-in search for that market.
 
 ## Assessment
 

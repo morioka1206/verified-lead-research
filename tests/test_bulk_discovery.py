@@ -262,8 +262,11 @@ class BuildAssessmentsTests(unittest.TestCase):
         self.assertIn('["cuisine"~"(^|;) *steak_house *(;|$)"]', query)
         self.assertIn('["shop"="butcher"]', query)
         self.assertIn('area["ISO3166-2"="DE-BE"]', query)
-        with self.assertRaises(ValueError):
-            import_osm.parse_tags(["cuisine=steak|.*"])
+        for bad in (["cuisine=steak|.*"], ["shop=a\\"], ['shop=a"b']):
+            with self.assertRaises(ValueError):
+                import_osm.parse_tags(bad)
+        self.assertEqual(import_osm.tag_selector("cuisine", "tex-mex.x"), '["cuisine"~"(^|;) *tex-mex[.]x *(;|$)"]')
+        self.assertNotIn("\\", import_osm.build_query(import_osm.parse_tags(["cuisine=tex-mex"]), "DE-BE", 60))
         elements = [
             {"type": "node", "id": 1, "tags": {"website": "https://grill.example.de", "cuisine": "argentinian; steak_house"}},
             {"type": "node", "id": 2, "tags": {"website": "https://grill.example.de/filiale", "cuisine": "steak_house"}},
@@ -274,6 +277,25 @@ class BuildAssessmentsTests(unittest.TestCase):
         self.assertEqual(out["https://grill.example.de/"]["osm_matched_tags"], ["cuisine=steak_house", "cuisine=argentinian"])
         self.assertEqual(out["https://grill.example.de/"]["osm_locations"], 2)
         self.assertEqual(out["https://sushi.example.de/"]["osm_matched_tags"], ["cuisine=japanese"])
+
+    def test_rerun_skips_areas_already_fetched(self):
+        calls = []
+
+        def fake(query, endpoints, timeout, pause=0):
+            area = query.split('"ISO3166-2"="')[1].split('"')[0]
+            calls.append(area)
+            if area == "DE-BY":
+                raise OSError("timeout")
+            return {"elements": [{"type": "node", "id": len(calls), "tags": {"website": f"https://{area.lower()}.example/", "shop": "butcher"}}]}
+
+        with TemporaryDirectory() as tmp:
+            out = Path(tmp) / "osm.json"
+            argv = ["import_osm.py", "--preset", "butcher", "--area", "DE-BE", "--area", "DE-BY", "--pause", "0", "--output", str(out)]
+            with patch.object(import_osm, "fetch_with_fallback", side_effect=fake), patch.object(sys, "argv", argv):
+                self.assertEqual(import_osm.main(), 0)
+                self.assertEqual(import_osm.main(), 1)  # only DE-BY is retried, and it fails again
+            self.assertEqual(calls, ["DE-BE", "DE-BY", "DE-BY"])
+            self.assertEqual([c["url"] for c in json.loads(out.read_text(encoding="utf-8"))], ["https://de-be.example/"])
 
     def test_overpass_falls_back_to_mirror(self):
         tried = []

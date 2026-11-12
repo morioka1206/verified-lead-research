@@ -66,6 +66,12 @@ class BatchRunTests(unittest.TestCase):
             selected = json.loads(Path(batch["candidates_file"]).read_text(encoding="utf-8"))
             # c gets the file priority 5; d keeps its own priority 1, which still beats the default 0.
             self.assertEqual([c["url"] for c in selected], ["https://c.example/", "https://d.example/"])
+            # Adding a file again with a higher priority moves its still-queued companies forward.
+            manage_batches.add_candidates(run_dir, low, priority=3)
+            status = manage_batches.export_outputs(run_dir)
+            self.assertEqual(status["queued_by_priority"], {"3": 2})
+            again = manage_batches.add_candidates(run_dir, low, priority=1)
+            self.assertEqual((again["reprioritized"], again["duplicates_skipped"]), (0, 2))
             bad = root / "bad.json"
             bad.write_text(json.dumps([{"url": "https://e.example/", "priority": "high"}]), encoding="utf-8")
             result = manage_batches.add_candidates(run_dir, bad)

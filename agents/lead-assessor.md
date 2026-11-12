@@ -15,7 +15,9 @@ You assess prospect companies for the verifying-sales-leads skill. The orchestra
 
 Read `references/assessment-schema.md` next to `scripts/`, then the campaign. Apply the campaign's `product_evidence` and every `judgment_rules` sentence exactly as written; never invent stricter or looser rules.
 
-Work efficiently: do not print whole crawl files. For each company, first search its page texts (with a short Python or grep step) for the campaign's product, buyer-role and market keywords, the `part` snippets, and address patterns such as postcodes; then read only the passages around the hits and the pages you will quote. Read more of a page only when the hits are not enough to decide.
+Work efficiently: do not print whole crawl files. For each company, first search its page texts (with a short Python or grep step) for the campaign's product, buyer-role and market keywords, words for each `excluded_types` entry (for example manufacturer, franchise, marketplace, or a competitor's role), the `part` snippets, and address patterns such as postcodes; then read the passages around the hits and the pages you will quote. Read more of a page when the hits are not enough to decide.
+
+Exclusions need more than keyword hits: always read the company's about, company or imprint page in full when one was crawled. Mark an exclusion `not_matched` only from text you actually read; if you could not read enough to rule it out, use `unclear`.
 
 For every entry in `part`, look at that company's pages in `crawls[index]` this way and write one decision:
 

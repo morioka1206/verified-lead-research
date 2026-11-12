@@ -72,7 +72,7 @@ The SQLite ledger deduplicates all discoveries by official domain across every b
 
 Outside the US, and for any storefront buyer type, read [discovery-methods.md](discovery-methods.md) first: it lists the `--preset` names, non-US areas, the mirror fallback, and `add-candidates --priority` for checking likely buyers first.
 
-For storefront buyer types (cafes, tea shops, roasters, bakeries, restaurants, supermarkets), web search yields only a few new companies per query. Import places that list a website from OpenStreetMap instead, one US state per Overpass request:
+For storefront buyer types (cafes, tea shops, roasters, bakeries, restaurants, supermarkets), web search yields only a few new companies per query. Import places that list a website from OpenStreetMap instead, one area (a US state or another ISO 3166-2 region) per Overpass request:
 
 ```text
 <python> skills/verifying-sales-leads/scripts/import_osm.py \
@@ -83,7 +83,7 @@ For storefront buyer types (cafes, tea shops, roasters, bakeries, restaurants, s
   --output runs/<timestamp>/discovery-osm-cafe.json
 ```
 
-Each item records the Overpass query and the OSM element URL as discovery provenance. Chain locations collapse to one company homepage (`osm_locations` counts them); social profiles, link hubs, ordering platforms, marketplaces, shared hosting tenants, and `.edu`/`.gov` sites are skipped. OSM is discovery only: every imported company is still crawled and needs on-site evidence. Keep the default pause between states and do not run parallel imports against the public Overpass server. Brands, wholesalers, and manufacturers are rarely mapped; keep using web search for them.
+Each item records the Overpass query and the OSM element URL as discovery provenance. Chain locations collapse to one company homepage (`osm_locations` counts them); social profiles, link hubs, ordering platforms, marketplaces, shared hosting tenants, and `.edu`/`.gov` sites are skipped. OSM is discovery only: every imported company is still crawled and needs on-site evidence. Keep the default pause between states and do not run parallel imports against the public Overpass server. Brands, wholesalers, and manufacturers are rarely mapped; find them with web search or the country-targeted `search_web.py` (see [discovery-methods.md](discovery-methods.md)).
 
 ## Process one batch
 

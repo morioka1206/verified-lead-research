@@ -52,7 +52,7 @@ Claude Codeでは、会話のモデル（Opusなど）が条件のヒアリン�
 
 Claude Codeに組み込まれた検索は米国向けの結果しか返しません。ほかの国では次を使います。
 
-- 精肉店・飲食店・カフェなど店舗型の相手：OpenStreetMapから取り込みます（`import_osm.py --area DE-BY` など）。本家のサーバーがクラウドからの接続を切る場合は、自動で公開ミラーに切り替えます。
+- 精肉店・飲食店・カフェなど店舗型の相手：OpenStreetMapから取り込みます（`import_osm.py --preset butcher --preset steak-restaurant --area DE-BY` など）。相手の種類ごとの組み合わせ（プリセット）が用意されています。本家のサーバーがクラウドからの接続を切る場合は、自動で公開ミラーに切り替えます。混雑で取れなかった州は、同じコマンドをもう一度実行すると、その州だけ取り直します。
 - 輸入・卸会社など地図に載りにくい相手：国を指定できるBrave Search API（`search_web.py --country DE --lang de`）を使います。BraveのAPIキーが必要です。クラウドでは、Claudeが出す入力欄から `api.search.brave.com` 用の秘密情報として保存すると、キーが会話に表示されずに使われます。
 
 ## 注意

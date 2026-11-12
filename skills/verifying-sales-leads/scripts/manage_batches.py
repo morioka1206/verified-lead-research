@@ -112,9 +112,11 @@ def add_candidates(run_dir: Path, input_path: Path, priority: int | None = None)
     connection = connect(run_dir)
     added = 0
     duplicates = 0
+    reprioritized = 0
     invalid = []
     # Recompute semantic identity from saved URLs; never rewrite legacy PK/FK keys.
     seen_companies = {company_key(row['url']) for row in connection.execute('SELECT url FROM candidates')}
+    queued_rows = queued_by_company(connection) if priority is not None else {}
     for raw in payload:
         try:
             candidate = {"url": raw} if isinstance(raw, str) else dict(raw)
@@ -127,7 +129,10 @@ def add_candidates(run_dir: Path, input_path: Path, priority: int | None = None)
             invalid.append({"candidate": raw, "reason": str(exc)})
             continue
         if domain in seen_companies:
-            duplicates += 1
+            if priority is not None and raise_queued_priority(connection, queued_rows.get(domain), priority):
+                reprioritized += 1
+            else:
+                duplicates += 1
             continue
         cursor = connection.execute(
             """
@@ -149,10 +154,42 @@ def add_candidates(run_dir: Path, input_path: Path, priority: int | None = None)
         "status": "candidates_added",
         "added": added,
         "duplicates_skipped": duplicates,
+        "reprioritized": reprioritized,
         "invalid": invalid,
         "candidates_discovered": discovered,
     }
     return result
+
+
+def queued_by_company(connection: sqlite3.Connection) -> dict[str, sqlite3.Row]:
+    return {company_key(row["url"]): row for row in
+            connection.execute("SELECT domain, url, payload_json FROM candidates WHERE status = 'queued'")}
+
+
+def raise_queued_priority(connection: sqlite3.Connection, row: sqlite3.Row | None, priority: int) -> bool:
+    """Raise the priority of a still-queued candidate for the same company.
+
+    Lets a run measure acceptance rates on a mixed first batch and then move a
+    buyer type forward by adding its file again with --priority. Batched or
+    completed candidates, and lower priorities, are left unchanged.
+    """
+    if row is None:
+        return False
+    payload = json.loads(row["payload_json"])
+    if stored_priority(payload) >= priority:
+        return False
+    payload["priority"] = priority
+    connection.execute("UPDATE candidates SET payload_json = ? WHERE domain = ?",
+                       (json.dumps(payload, ensure_ascii=False), row["domain"]))
+    return True
+
+
+def stored_priority(payload: dict[str, Any]) -> int:
+    """Priority of a saved payload; a malformed hand edit counts as 0 instead of stopping the run."""
+    try:
+        return candidate_priority(payload)
+    except ValueError:
+        return 0
 
 
 def candidate_priority(candidate: dict[str, Any]) -> int:
@@ -227,7 +264,7 @@ def next_batch(run_dir: Path) -> dict[str, Any]:
     rows = connection.execute(
         "SELECT domain, payload_json FROM candidates WHERE status = 'queued' ORDER BY rowid"
     ).fetchall()
-    ranked = sorted(enumerate(rows), key=lambda item: (-int(json.loads(item[1]["payload_json"]).get("priority", 0) or 0), item[0]))
+    ranked = sorted(enumerate(rows), key=lambda item: (-stored_priority(json.loads(item[1]["payload_json"])), item[0]))
     queued = [row for _, row in ranked[:limit]]
     if not queued:
         connection.close()
@@ -283,6 +320,10 @@ def progress_summary(connection: sqlite3.Connection, campaign: dict[str, Any]) -
     maximum = int(campaign["max_candidates"])
     open_batches = connection.execute("SELECT COUNT(*) FROM batches WHERE status = 'open'").fetchone()[0]
     queued = connection.execute("SELECT COUNT(*) FROM candidates WHERE status = 'queued'").fetchone()[0]
+    queued_by_priority: dict[str, int] = {}
+    for row in connection.execute("SELECT payload_json FROM candidates WHERE status = 'queued'"):
+        level = str(stored_priority(json.loads(row["payload_json"])))
+        queued_by_priority[level] = queued_by_priority.get(level, 0) + 1
     discovered = connection.execute("SELECT COUNT(*) FROM candidates").fetchone()[0]
     completed_batches = connection.execute("SELECT COUNT(*) FROM batches WHERE status = 'completed'").fetchone()[0]
     if accepted >= target:
@@ -306,6 +347,7 @@ def progress_summary(connection: sqlite3.Connection, campaign: dict[str, Any]) -
         "batch_size": int(campaign.get("batch_size", 50)),
         "candidates_discovered": discovered,
         "candidates_queued": queued,
+        "queued_by_priority": dict(sorted(queued_by_priority.items(), key=lambda item: -int(item[0]))),
         "candidates_checked": checked,
         "accepted_available": accepted,
         "accepted_exported": min(accepted, target),
