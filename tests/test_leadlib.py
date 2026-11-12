@@ -158,6 +158,51 @@ class LeadLibraryTests(unittest.TestCase):
         safe = leadlib.validate_public_url("https://example.com", resolver=public_resolver)
         self.assertEqual(safe, "https://example.com/")
 
+    def test_unresolvable_host_uses_fallback_resolver_with_public_check(self):
+        def no_dns(*_args):
+            raise socket.gaierror(-2, "Name or service not known")
+
+        self.assertEqual(
+            leadlib.validate_public_url("https://example.com", resolver=no_dns, fallback_resolver=lambda _h: {"93.184.216.34"}),
+            "https://example.com/",
+        )
+        for fallback in (lambda _h: {"10.0.0.5"}, lambda _h: {"127.0.0.1"}, lambda _h: set(), None):
+            with self.assertRaises(ValueError):
+                leadlib.validate_public_url("https://example.com", resolver=no_dns, fallback_resolver=fallback)
+        with patch.object(leadlib, "getproxies", return_value={}), patch.object(leadlib, "doh_resolve") as doh:
+            with self.assertRaises(ValueError):
+                leadlib.validate_public_url("https://example.com", resolver=no_dns)
+            doh.assert_not_called()
+
+    def test_doh_resolve_keeps_only_address_records(self):
+        class Response:
+            def __init__(self, body):
+                self.body = body
+
+            def read(self, _limit):
+                return self.body
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+        bodies = iter([
+            b'{"Answer":[{"type":5,"data":"alias.example."},{"type":1,"data":"93.184.216.34"}]}',
+            b'{"Status":0}',
+        ])
+
+        class Opener:
+            def open(self, _request, timeout):
+                return Response(next(bodies))
+
+        leadlib._DOH_CACHE.clear()
+        with patch.object(leadlib, "build_opener", return_value=Opener()):
+            self.assertEqual(leadlib.doh_resolve("Example.com."), {"93.184.216.34"})
+        self.assertEqual(leadlib.doh_resolve("example.com"), {"93.184.216.34"})
+        leadlib._DOH_CACHE.clear()
+
     def test_redirect_handler_rejects_private_destination(self):
         handler = leadlib.SafeRedirectHandler()
         with self.assertRaises(ValueError):
