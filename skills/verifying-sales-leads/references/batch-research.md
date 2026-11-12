@@ -70,6 +70,8 @@ The SQLite ledger deduplicates all discoveries by official domain across every b
 
 ### Bulk discovery from OpenStreetMap
 
+Outside the US, and for any storefront buyer type, read [discovery-methods.md](discovery-methods.md) first: it lists the `--preset` names, non-US areas, the mirror fallback, and `add-candidates --priority` for checking likely buyers first.
+
 For storefront buyer types (cafes, tea shops, roasters, bakeries, restaurants, supermarkets), web search yields only a few new companies per query. Import places that list a website from OpenStreetMap instead, one US state per Overpass request:
 
 ```text

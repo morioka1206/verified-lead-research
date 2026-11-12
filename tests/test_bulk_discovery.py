@@ -256,6 +256,25 @@ class BuildAssessmentsTests(unittest.TestCase):
         _, errors = build_assessments.build(CAMPAIGN, crawls, decisions)
         self.assertTrue(any("reused by 7" in e for e in errors))
 
+    def test_presets_and_list_valued_cuisine(self):
+        tags = import_osm.parse_tags(import_osm.PRESETS["steak-restaurant"] + ["shop=butcher"])
+        query = import_osm.build_query(tags, "DE-BE", 60)
+        self.assertIn('["cuisine"~"(^|;) *steak_house *(;|$)"]', query)
+        self.assertIn('["shop"="butcher"]', query)
+        self.assertIn('area["ISO3166-2"="DE-BE"]', query)
+        with self.assertRaises(ValueError):
+            import_osm.parse_tags(["cuisine=steak|.*"])
+        elements = [
+            {"type": "node", "id": 1, "tags": {"website": "https://grill.example.de", "cuisine": "argentinian; steak_house"}},
+            {"type": "node", "id": 2, "tags": {"website": "https://grill.example.de/filiale", "cuisine": "steak_house"}},
+            {"type": "node", "id": 3, "tags": {"website": "https://sushi.example.de", "cuisine": "japanese;sushi"}},
+        ]
+        wanted = import_osm.parse_tags(["cuisine=steak_house", "cuisine=argentinian", "cuisine=japanese"])
+        out = {c["url"]: c for c in import_osm.elements_to_candidates(elements, "DE-BE", "label", wanted)}
+        self.assertEqual(out["https://grill.example.de/"]["osm_matched_tags"], ["cuisine=steak_house", "cuisine=argentinian"])
+        self.assertEqual(out["https://grill.example.de/"]["osm_locations"], 2)
+        self.assertEqual(out["https://sushi.example.de/"]["osm_matched_tags"], ["cuisine=japanese"])
+
     def test_overpass_falls_back_to_mirror(self):
         tried = []
 

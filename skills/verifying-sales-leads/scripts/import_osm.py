@@ -10,6 +10,10 @@ discovery provenance. Websites that are social profiles, link hubs, review
 sites, marketplaces, or shared hosting tenants are skipped, because their
 host does not identify one company.
 
+Use --preset for common buyer types (see PRESETS), for example
+--preset steak-restaurant --preset butcher. Values of list-valued keys such as
+cuisine ("japanese;sushi") are matched as list items.
+
 Example:
   python import_osm.py --tag amenity=cafe --tag shop=tea --area US-OR --area US-WA \
       --output runs/<run>/discovery-osm-cafe.json --exclude-candidates runs/<run>
@@ -19,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sqlite3
 import sys
 import time
@@ -55,10 +60,35 @@ SKIP_HOST_SUFFIXES = (
 )
 
 
+# Keys whose OSM values are semicolon-separated lists ("japanese;sushi"), so an
+# exact match would miss most places. They are matched as list items instead.
+LIST_VALUED_KEYS = {"cuisine", "diet", "shop:type"}
+SAFE_VALUE = re.compile(r"^[A-Za-z0-9_:.-]+$")
+
+# Named tag groups for common buyer types. Values follow OSM's documented tags.
+PRESETS: dict[str, list[str]] = {
+    "butcher": ["shop=butcher"],
+    "deli": ["shop=deli"],
+    "department-store": ["shop=department_store"],
+    "steak-restaurant": ["cuisine=steak_house", "cuisine=argentinian", "cuisine=brazilian", "cuisine=barbecue"],
+    "japanese-restaurant": ["cuisine=japanese", "cuisine=teppanyaki"],
+    "cafe": ["amenity=cafe"],
+    "tea-coffee-shop": ["shop=tea", "shop=coffee"],
+    "bakery": ["shop=bakery", "shop=pastry"],
+    "supermarket": ["shop=supermarket"],
+}
+
+
+def tag_selector(key: str, value: str) -> str:
+    if key in LIST_VALUED_KEYS:
+        return f'["{key}"~"(^|;) *{re.escape(value)} *(;|$)"]'
+    return f'["{key}"="{value}"]'
+
+
 def build_query(tags: list[tuple[str, str]], area: str, timeout: int) -> str:
     selectors = "".join(
-        f'nwr["{key}"="{value}"]["website"](area.a);\n'
-        f'nwr["{key}"="{value}"]["contact:website"](area.a);\n'
+        f'nwr{tag_selector(key, value)}["website"](area.a);\n'
+        f'nwr{tag_selector(key, value)}["contact:website"](area.a);\n'
         for key, value in tags
     )
     return (
@@ -114,8 +144,18 @@ def normalize_website(raw: str) -> str | None:
     return f"{parts.scheme}://{parts.hostname}/"
 
 
+def matched_tags(tags: dict[str, str], wanted: list[tuple[str, str]]) -> list[str]:
+    found = []
+    for key, value in wanted:
+        present = tags.get(key, "")
+        items = [item.strip() for item in present.split(";")] if key in LIST_VALUED_KEYS else [present]
+        if value in items:
+            found.append(f"{key}={value}")
+    return found
+
+
 def elements_to_candidates(
-    elements: Iterable[dict[str, Any]], area: str, tag_label: str
+    elements: Iterable[dict[str, Any]], area: str, tag_label: str, wanted: list[tuple[str, str]] | None = None
 ) -> list[dict[str, Any]]:
     by_key: dict[str, dict[str, Any]] = {}
     for element in elements:
@@ -128,8 +168,12 @@ def elements_to_candidates(
             continue
         key = company_key(url)
         osm_url = f"https://www.openstreetmap.org/{element.get('type')}/{element.get('id')}"
+        matched = matched_tags(tags, wanted or [])
         if key in by_key:
             by_key[key]["osm_locations"] += 1
+            for tag in matched:
+                if tag not in by_key[key]["osm_matched_tags"]:
+                    by_key[key]["osm_matched_tags"].append(tag)
             continue
         address = ", ".join(
             part for part in (tags.get("addr:city"), tags.get("addr:state")) if part
@@ -142,6 +186,7 @@ def elements_to_candidates(
             "osm_brand": tags.get("brand") or "",
             "osm_address_hint": address,
             "osm_locations": 1,
+            "osm_matched_tags": matched,
         }
     return list(by_key.values())
 
@@ -187,13 +232,17 @@ def parse_tags(values: list[str]) -> list[tuple[str, str]]:
         key, tag_value = value.split("=", 1)
         if not key or not tag_value or '"' in value:
             raise ValueError(f"invalid tag: {value}")
+        if key in LIST_VALUED_KEYS and not SAFE_VALUE.match(tag_value):
+            raise ValueError(f"invalid {key} value: {tag_value}")
         tags.append((key, tag_value))
     return tags
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--tag", action="append", required=True, help="OSM tag key=value, repeatable")
+    parser.add_argument("--tag", action="append", default=[], help="OSM tag key=value, repeatable")
+    parser.add_argument("--preset", action="append", default=[], choices=sorted(PRESETS),
+                        help="named tag group for a buyer type; repeatable, combinable with --tag")
     parser.add_argument("--area", action="append", help="ISO3166-2 area such as US-CA; repeatable")
     parser.add_argument("--all-us-states", action="store_true", help="Query every US state and DC")
     parser.add_argument("--output", required=True, type=Path)
@@ -209,7 +258,10 @@ def main() -> int:
     parser.add_argument("--raw-dir", type=Path, help="Save raw Overpass responses here for audit")
     args = parser.parse_args()
 
-    tags = parse_tags(args.tag)
+    tag_values = [tag for preset in args.preset for tag in PRESETS[preset]] + list(args.tag)
+    if not tag_values:
+        parser.error("give --tag or --preset")
+    tags = list(dict.fromkeys(parse_tags(tag_values)))
     areas = [f"US-{state}" for state in US_STATES] if args.all_us_states else (args.area or [])
     if not areas:
         parser.error("give --area or --all-us-states")
@@ -240,7 +292,7 @@ def main() -> int:
             args.raw_dir.mkdir(parents=True, exist_ok=True)
             (args.raw_dir / f"overpass-{area}.json").write_text(json.dumps(payload), encoding="utf-8")
         new = 0
-        for candidate in elements_to_candidates(payload.get("elements", []), area, tag_label):
+        for candidate in elements_to_candidates(payload.get("elements", []), area, tag_label, tags):
             if args.max_locations and candidate["osm_locations"] > args.max_locations:
                 continue
             key = company_key(candidate["url"])
