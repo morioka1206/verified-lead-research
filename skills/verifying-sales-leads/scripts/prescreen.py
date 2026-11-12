@@ -10,6 +10,10 @@
   snippets (product, buyer role, market) to speed up reading. Snippets are hints,
   not evidence: the AI still copies exact excerpts from the crawl pages.
 
+`split` divides the `for_ai` list into parts so several assessor agents (for
+example a cheaper model per part) can work in parallel; each part keeps the
+crawl `index`, which assessors use in their decisions.
+
 `merge` combines the automatic assessments with the AI's assessments into one
 file covering every crawled company, ready for finalize/complete-batch.
 """
@@ -176,6 +180,22 @@ def merge(crawls: list[dict[str, Any]], prescreen: dict[str, Any], ai: list[dict
     return merged
 
 
+def split(prescreen: dict[str, Any], parts: int) -> list[list[dict[str, Any]]]:
+    if parts < 1:
+        raise ValueError("--parts must be at least 1")
+    items = list(prescreen.get("for_ai") or [])
+    if not items:
+        return []
+    parts = min(parts, len(items))
+    size, extra = divmod(len(items), parts)
+    chunks, start = [], 0
+    for k in range(parts):
+        end = start + size + (1 if k < extra else 0)
+        chunks.append(items[start:end])
+        start = end
+    return chunks
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -188,8 +208,21 @@ def main() -> int:
     m.add_argument("--prescreen", required=True, type=Path)
     m.add_argument("--assessments", required=True, type=Path, help="AI assessments for the for_ai companies")
     m.add_argument("--output", required=True, type=Path)
+    p = sub.add_parser("split")
+    p.add_argument("--prescreen", required=True, type=Path)
+    p.add_argument("--parts", required=True, type=int)
+    p.add_argument("--output-dir", required=True, type=Path)
     args = parser.parse_args()
 
+    if args.command == "split":
+        chunks = split(read_json(args.prescreen), args.parts)
+        files = []
+        for k, chunk in enumerate(chunks, 1):
+            path = args.output_dir / f"for-ai-part{k}.json"
+            write_json(path, chunk)
+            files.append({"file": str(path), "indices": [item["index"] for item in chunk]})
+        print(json.dumps({"parts": files}, ensure_ascii=False))
+        return 0
     if args.command == "screen":
         result = screen(read_json(args.campaign), read_json(args.crawls))
         write_json(args.output, result)

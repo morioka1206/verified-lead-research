@@ -39,7 +39,18 @@ claude.ai/code でEnvironmentを1つ作ります。既存のEnvironmentを編集
 .venv/bin/python skills/verifying-sales-leads/scripts/check_browser.py
 ```
 
+## モデルの使い分け
+
+Claude Codeでは、会話のモデル（Opusなど）が条件のヒアリングと最終確認を担当し、量の多い作業を軽いモデルの補助エージェントへ任せます。
+
+- `lead-scout`（Haiku）：検索して候補企業のURLを集めます。合否は判断しません。
+- `lead-assessor`（Sonnet）：取得した公式サイトを読み、証拠と判定を書きます。複数を並行で動かします。
+
+補助エージェントが書いた証拠も、これまでどおりプログラムが原文と照合します。軽いモデルの判断が甘くても、証拠がそろわない会社は合格になりません。詳しい流れは `skills/verifying-sales-leads/references/model-delegation.md` にあります。PCの `claude --plugin-dir .` でも同じエージェントが使えます。
+
 ## 注意
+
+- クラウドではホスト名を手元で名前解決できないため、名前解決できない時だけDNS-over-HTTPS（Cloudflare）でアドレスを調べ、公開アドレスかどうかを従来どおり確認します。調査先のホスト名がCloudflareのDNSに送られます。
 
 - クラウドのコンテナは一時的です。`runs/` は `.gitignore` の対象なので、コミットされません。セッションが終わる前に、`leads.xlsx`、`leads.csv`、`audit.json` をダウンロードしてください。Googleスプレッドシートへの書き出しも使えます。
 - 大量モードの `research.sqlite3` も同じコンテナ内にあります。同じセッションを再開すれば続きから進めますが、新しいセッションには引き継がれません。

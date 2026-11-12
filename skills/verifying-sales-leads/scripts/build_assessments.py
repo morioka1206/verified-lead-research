@@ -179,13 +179,14 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--campaign", required=True, type=Path)
     parser.add_argument("--crawls", required=True, type=Path)
-    parser.add_argument("--decisions", required=True, type=Path)
+    parser.add_argument("--decisions", required=True, type=Path, action="append",
+                        help="decisions JSON array; repeat to combine parts written by parallel assessors")
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
     assessments, errors = build(
         json.loads(args.campaign.read_text(encoding="utf-8")),
         json.loads(args.crawls.read_text(encoding="utf-8")),
-        json.loads(args.decisions.read_text(encoding="utf-8")),
+        [d for path in args.decisions for d in json.loads(path.read_text(encoding="utf-8"))],
     )
     if errors:
         print(json.dumps({"written": False, "errors": errors}, ensure_ascii=False, indent=2))
