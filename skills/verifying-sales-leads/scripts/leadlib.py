@@ -53,7 +53,7 @@ FORM_CONTEXT_HINTS = (
     "contact[body]",
 )
 LINK_GROUP_HINTS = {
-    "about": ("about", "company", "who-we-are", "会社概要", "企業情報", "会社案内", "会社情報", "企業概要", "profile", "outline", "gaiyou", "gaiyo", "kaisha"),
+    "about": ("about", "company", "who-we-are", "impressum", "imprint", "legal-notice", "会社概要", "企業情報", "会社案内", "会社情報", "企業概要", "profile", "outline", "gaiyou", "gaiyo", "kaisha"),
     "menu": (
         "menu",
         "drink",
@@ -89,6 +89,12 @@ LINK_GROUP_HINTS = {
     "contact": CONTACT_HINTS,
 }
 DEFAULT_LINK_GROUP_ORDER = ("about", "products", "distribution", "locations", "contact")
+# Pages that rarely hold evidence but match hints by accident ("accessibility"
+# contains "access"). They never take one of the five page slots via a hint.
+NON_EVIDENCE_LINK_HINTS = (
+    "accessibility", "barrierefrei", "privacy", "datenschutz", "cookie", "terms", "agb",
+    "career", "jobs", "karriere", "/login", "/account", "/cart",
+)
 HOSPITALITY_LINK_GROUP_ORDER = ("about", "menu", "locations", "contact")
 REQUIRED_CLAIM_TYPES = {"product", "buyer_role", "target_market"}
 EXCLUSION_CHECK_RESULTS = {"not_matched", "matched", "unclear"}
@@ -490,9 +496,54 @@ def corrupt_text(text: str) -> bool:
     return text.count('\ufffd') > max(3, len(text) // 50)
 
 
+STRUCTURED_ADDRESS_PREFIX = "[structured data address]"
+LD_JSON_RE = re.compile(r"<script[^>]+type=[\"']?application/ld\+json[^>]*>(.*?)</script>", re.I | re.S)
+MAX_STRUCTURED_ADDRESSES = 20
+
+
+def structured_addresses(html_text: str) -> list[str]:
+    """Postal addresses the page itself declares in schema.org JSON-LD.
+
+    Chain sites often list locations only in structured data or scripts, so the
+    visible text has no address. These lines are page content from the official
+    site, appended to the text with a clear prefix so an assessor can quote them.
+    """
+    found: list[str] = []
+
+    def walk(node: Any) -> None:
+        if len(found) >= MAX_STRUCTURED_ADDRESSES:
+            return
+        if isinstance(node, list):
+            for item in node:
+                walk(item)
+            return
+        if not isinstance(node, dict):
+            return
+        kind = node.get("@type")
+        kinds = kind if isinstance(kind, list) else [kind]
+        if "PostalAddress" in kinds or "streetAddress" in node:
+            parts = [node.get("streetAddress"), node.get("addressLocality"),
+                     " ".join(str(v) for v in (node.get("addressRegion"), node.get("postalCode")) if v),
+                     node.get("addressCountry") if isinstance(node.get("addressCountry"), str) else None]
+            line = normalize_text(", ".join(str(part) for part in parts if part))[:200]
+            if line and any(ch.isdigit() for ch in line) and line not in found:
+                found.append(line)
+        for value in node.values():
+            walk(value)
+
+    for block in LD_JSON_RE.findall(html_text)[:20]:
+        try:
+            walk(json.loads(html.unescape(block.strip())))
+        except (ValueError, RecursionError):
+            continue
+    return found
+
+
 def parse_site(html_text: str, base_url: str) -> dict[str, Any]:
     parser = SiteHTMLParser()
     parser.feed(html_text)
+    for address in structured_addresses(html_text):
+        parser.text_blocks.append(f"{STRUCTURED_ADDRESS_PREFIX} {address}")
     text = normalize_text(" ".join(parser.text_blocks))
     title = normalize_text(" ".join(parser.title_parts))
     company_name = parser.site_name or re.split(r"\s+[|–—]\s+|\s+-\s+", title, maxsplit=1)[0] or None
@@ -712,6 +763,8 @@ def _fetch_page(
 
 def _link_group(link: dict[str, str]) -> str | None:
     haystack = f"{urlparse(link['url']).path} {link.get('text', '')}".lower()
+    if any(hint in haystack for hint in NON_EVIDENCE_LINK_HINTS):
+        return None
     for group, hints in LINK_GROUP_HINTS.items():
         if any(hint in haystack for hint in hints):
             return group
