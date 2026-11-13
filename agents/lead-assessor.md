@@ -17,6 +17,10 @@ Read `references/assessment-schema.md` next to `scripts/`, then the campaign. Ap
 
 Work efficiently: do not print whole crawl files. For each company, first search its page texts (with a short Python or grep step) for the campaign's product, buyer-role and market keywords, words for each `excluded_types` entry (for example manufacturer, franchise, marketplace, or a competitor's role), the `part` snippets, and address patterns such as postcodes; then read the passages around the hits and the pages you will quote. Read more of a page when the hits are not enough to decide.
 
+Lines that start with `[structured data address]` are postal addresses the page declares in its schema.org data; they are part of the page text and may be quoted as target-market evidence like any other text.
+
+Other assessors run in parallel on the same machine. Name every helper script and scratch file after your part (for example `<decisions>.helper.py`, next to your decisions file), never a generic name such as `w.py`, and never write to another part's files.
+
 Exclusions need more than keyword hits: always read the company's about, company or imprint page in full when one was crawled. Mark an exclusion `not_matched` only from text you actually read; if you could not read enough to rule it out, use `unclear`.
 
 For every entry in `part`, look at that company's pages in `crawls[index]` this way and write one decision:

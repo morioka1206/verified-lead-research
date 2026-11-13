@@ -203,6 +203,33 @@ class LeadLibraryTests(unittest.TestCase):
         self.assertEqual(leadlib.doh_resolve("example.com"), {"93.184.216.34"})
         leadlib._DOH_CACHE.clear()
 
+    def test_structured_data_addresses_join_page_text(self):
+        html_text = """<html><body><p>Our steakhouses</p>
+        <script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization",
+          "subOrganization":[{"@type":"Restaurant","address":{"@type":"PostalAddress","streetAddress":"6991 E Camelback Rd",
+          "addressLocality":"Scottsdale","addressRegion":"AZ","postalCode":"85251","addressCountry":"US"}},
+          {"@type":"Restaurant","address":{"@type":"PostalAddress","addressLocality":"Nowhere"}}]}</script>
+        <script type="application/ld+json">{not json</script></body></html>"""
+        parsed = leadlib.parse_site(html_text, "https://steak.example/locations")
+        self.assertIn("[structured data address] 6991 E Camelback Rd, Scottsdale, AZ 85251, US", parsed["text"])
+        self.assertNotIn("Nowhere", parsed["text"])  # no number, too vague to be an address
+        claim = {"evidence_url": "https://steak.example/locations", "evidence_text_original": "6991 E Camelback Rd, Scottsdale, AZ 85251"}
+        self.assertTrue(leadlib.evidence_exists(claim, [{"url": "https://steak.example/locations", "text": parsed["text"]}]))
+
+    def test_accessibility_and_privacy_links_do_not_take_slots(self):
+        links = [
+            {"url": "https://shop.example/accessibility", "text": "Accessibility"},
+            {"url": "https://shop.example/datenschutz", "text": "Datenschutz"},
+            {"url": "https://shop.example/impressum", "text": "Impressum"},
+            {"url": "https://shop.example/locations", "text": "Our locations"},
+            {"url": "https://shop.example/access/", "text": "アクセス"},
+        ]
+        chosen = leadlib.priority_links(links, "https://shop.example/")
+        self.assertIn("https://shop.example/impressum", chosen)
+        self.assertNotIn("https://shop.example/accessibility", chosen)
+        self.assertNotIn("https://shop.example/datenschutz", chosen)
+        self.assertTrue(any("locations" in url or "/access/" in url for url in chosen))
+
     def test_redirect_handler_rejects_private_destination(self):
         handler = leadlib.SafeRedirectHandler()
         with self.assertRaises(ValueError):
