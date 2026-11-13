@@ -1,3 +1,4 @@
+import json
 import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -15,6 +16,37 @@ import leadlib  # noqa: E402
 
 
 class PlaywrightTests(unittest.TestCase):
+    def test_structured_address_shell_renders_actual_business_content(self):
+        addresses = [{'@type': 'PostalAddress', 'streetAddress': f'{n} Main Street',
+                      'addressLocality': 'Cambridge', 'addressRegion': 'MA',
+                      'postalCode': '02139', 'addressCountry': 'US'} for n in range(5)]
+        body = ('<html><body><div id="app"></div><script id="locations-json" type="application/ld+json">'
+                + json.dumps(addresses) + '</script><script>'
+                'document.getElementById("app").textContent = "We manufacture matcha cookies for wholesale customers.";'
+                'document.getElementById("locations-json").remove();'
+                '</script></body></html>')
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(200)
+                self.send_header('Content-Type', 'text/html; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(body.encode())
+            def log_message(self, *args):
+                pass
+        server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+        worker = threading.Thread(target=server.serve_forever, daemon=True)
+        worker.start()
+        try:
+            result, parsed = leadlib.fetch_page(f'http://127.0.0.1:{server.server_port}/', allow_private=True)
+            self.assertEqual(result.fetched_with, 'playwright')
+            self.assertIn('We manufacture matcha cookies for wholesale customers.', parsed['text'])
+            self.assertIn('[structured data address]', parsed['text'])
+            self.assertNotIn('locations-json" type=', result.html)
+        finally:
+            server.shutdown()
+            server.server_close()
+            worker.join(timeout=3)
+
     def test_browser_does_not_load_automatic_child_frames_outside_crawl_budget(self):
         try:
             import playwright.sync_api

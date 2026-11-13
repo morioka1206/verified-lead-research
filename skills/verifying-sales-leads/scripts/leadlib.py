@@ -92,7 +92,7 @@ DEFAULT_LINK_GROUP_ORDER = ("about", "products", "distribution", "locations", "c
 # Pages that rarely hold evidence but match hints by accident ("accessibility"
 # contains "access"). They never take one of the five page slots via a hint.
 NON_EVIDENCE_LINK_HINTS = (
-    "accessibility", "barrierefrei", "privacy", "datenschutz", "cookie", "terms", "agb",
+    "accessibility", "barrierefrei", "privacy", "datenschutz", "terms", "agb",
     "career", "jobs", "karriere", "/login", "/account", "/cart",
 )
 HOSPITALITY_LINK_GROUP_ORDER = ("about", "menu", "locations", "contact")
@@ -542,6 +542,8 @@ def structured_addresses(html_text: str) -> list[str]:
 def parse_site(html_text: str, base_url: str) -> dict[str, Any]:
     parser = SiteHTMLParser()
     parser.feed(html_text)
+    # Structured evidence is useful for claims, but is not rendered page content.
+    visible_text = normalize_text(" ".join(parser.text_blocks))
     for address in structured_addresses(html_text):
         parser.text_blocks.append(f"{STRUCTURED_ADDRESS_PREFIX} {address}")
     text = normalize_text(" ".join(parser.text_blocks))
@@ -566,6 +568,7 @@ def parse_site(html_text: str, base_url: str) -> dict[str, Any]:
         "company_name": company_name,
         "title": title,
         "text": text,
+        "visible_text": visible_text,
         "text_blocks": parser.text_blocks,
         "emails": sorted(emails),
         "links": links,
@@ -575,7 +578,7 @@ def parse_site(html_text: str, base_url: str) -> dict[str, Any]:
 
 
 def looks_like_js_shell(parsed: dict[str, Any]) -> bool:
-    text = parsed.get("text", "").lower()
+    text = parsed.get("visible_text", parsed.get("text", "")).lower()
     return len(text) < 200 or "enable javascript" in text or "javascript is required" in text or corrupt_text(text)
 
 
@@ -741,8 +744,10 @@ def _fetch_page(
     allow_private: bool = False,
 ) -> tuple[FetchResult, dict[str, Any]]:
     static_error: Exception | None = None
+    static_result: FetchResult | None = None
     try:
         result = static_fetch(url, timeout=timeout, allow_private=allow_private)
+        static_result = result
         parsed = parse_site(result.html, result.final_url)
         if not browser_fallback or not looks_like_js_shell(parsed):
             return result, parsed
@@ -758,12 +763,31 @@ def _fetch_page(
             raise static_error
         raise RuntimeError("Static page did not contain enough visible text")
     result = playwright_fetch(url, timeout=max(timeout, 20.0), allow_private=allow_private)
-    return result, parse_site(result.html, result.final_url)
+    parsed = parse_site(result.html, result.final_url)
+    # Hydration may remove JSON-LD scripts. Preserve evidence fetched successfully
+    # at this exact URL, never an error page or a different redirect destination.
+    if (static_result is not None and static_result.status_code == 200 and result.status_code == 200
+            and canonicalize_url(static_result.final_url) == canonicalize_url(result.final_url)):
+        for address in structured_addresses(static_result.html):
+            line = f"{STRUCTURED_ADDRESS_PREFIX} {address}"
+            if line not in parsed['text_blocks']:
+                parsed['text_blocks'].append(line)
+        parsed['text'] = normalize_text(' '.join(parsed['text_blocks']))
+    return result, parsed
 
 
 def _link_group(link: dict[str, str]) -> str | None:
     haystack = f"{urlparse(link['url']).path} {link.get('text', '')}".lower()
     if any(hint in haystack for hint in NON_EVIDENCE_LINK_HINTS):
+        return None
+    # Cookies are also food: only identifiable cookie-policy/settings links are noise.
+    if re.search(r"\bcookies?[\s_-]*(?:policy|policies|notice|settings|preferences|consent)\b", haystack):
+        return None
+    cookie_context = re.sub(r"[-_/]+", " ", haystack)
+    label = normalize_text(link.get('text', '')).lower()
+    if (re.search(r"\bcookies?\b", cookie_context)
+            and (re.search(r"\b(?:policy|policies|notice|settings|preferences|consent|richtlinien?|hinweise?|einstellungen)\b", cookie_context)
+                 or label == 'how we use cookies')):
         return None
     for group, hints in LINK_GROUP_HINTS.items():
         if any(hint in haystack for hint in hints):
