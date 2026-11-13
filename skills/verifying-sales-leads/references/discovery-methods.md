@@ -10,7 +10,7 @@ Pick the discovery method from the confirmed market and buyer types before searc
 | Any other country | Storefronts: butchers, restaurants, cafes, bakeries, shops, supermarkets | OpenStreetMap import (`import_osm.py`), free |
 | Any other country | Companies rarely on maps: importers, wholesalers, brands, manufacturers, B2B services | Country-targeted search (`search_web.py`, needs a Brave Search API key); without a key, client web search plus a warning in the brief that results will be few |
 
-Some clients' built-in search covers one country only (platform notes are in the repository's `docs/`). Before relying on it for another market, run one local-language query and check whether official business sites come back or only directories, review sites and booking platforms. If it is the latter, say so in the brief instead of promising a count.
+Built-in search may be geographically biased or restricted in a particular environment (platform notes are in the repository's `docs/`). A US-only availability message alone does not prove results are US-only. Test the target market with a few local-language queries and check whether official business sites come back or only directories, reviews and booking platforms. Record the environment, date and observed limitation. Directory-heavy results are a warning, not proof that the country is unsupported. If coverage is poor, disclose it rather than promising a count. Use Brave only with the user's authorization for external API use; client search and public directories remain available alternatives.
 
 Directories, review sites, maps and booking platforms are never a company URL or evidence. Use them only to reach a link to the company's own site, and record only a URL that appears as a link in the results.
 

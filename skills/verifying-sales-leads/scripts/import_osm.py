@@ -7,8 +7,8 @@ assessed with on-site evidence before it can be accepted.
 
 Each output item records the Overpass query and the OSM element URL as its
 discovery provenance. Websites that are social profiles, link hubs, review
-sites, marketplaces, or shared hosting tenants are skipped, because their
-host does not identify one company.
+sites, marketplaces, or unsupported shared hosting tenants are skipped.
+Supported shared providers retain the company-specific tenant root.
 
 Use --preset for common buyer types (see PRESETS), for example
 --preset steak-restaurant --preset butcher. Values of list-valued keys such as
@@ -33,7 +33,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Iterable
 
-from leadlib import canonicalize_url, company_key
+from leadlib import canonicalize_url, company_key, company_root_url, same_site
 
 DEFAULT_ENDPOINT = "https://overpass-api.de/api/interpreter"
 # Public mirror tried when the main server refuses or times out (seen from cloud sessions).
@@ -108,7 +108,20 @@ def fetch_with_fallback(query: str, endpoints: list[str], timeout: int, pause: f
         if position and pause:
             time.sleep(pause)
         try:
-            return fetch_overpass(query, endpoint, timeout)
+            payload = fetch_overpass(query, endpoint, timeout)
+            # Overpass can return HTTP 200 with an error and partial/empty data.
+            # Such an area must remain retryable, not be marked successfully fetched.
+            if not isinstance(payload, dict) or not isinstance(payload.get("elements"), list):
+                raise ValueError("Invalid Overpass response: expected an elements list")
+            if payload.get("remark"):
+                raise ValueError(f"Incomplete Overpass response: {str(payload['remark'])[:200]}")
+            for element in payload['elements']:
+                if (not isinstance(element, dict) or element.get('type') not in {'node', 'way', 'relation'}
+                        or type(element.get('id')) is not int or element['id'] <= 0
+                        or not isinstance(element.get('tags'), dict)
+                        or not all(isinstance(k, str) and isinstance(v, str) for k, v in element['tags'].items())):
+                    raise ValueError('Invalid Overpass response: malformed tagged element')
+            return payload
         except Exception as exc:  # try the next mirror
             last = exc
             print(f"  {endpoint} failed: {str(exc)[:120]}", file=sys.stderr)
@@ -145,8 +158,11 @@ def normalize_website(raw: str) -> str | None:
         return None
     if host_is_skipped(url):
         return None
-    # Use the company homepage; a store-locator page is not the company identity.
-    return f"{parts.scheme}://{parts.hostname}/"
+    # Ordinary chains collapse to their homepage; shared tenants retain their scope.
+    root = company_root_url(url)
+    if not same_site(root, root):
+        return None  # Supported provider homepage, but no company tenant selected.
+    return root
 
 
 def matched_tags(tags: dict[str, str], wanted: list[tuple[str, str]]) -> list[str]:

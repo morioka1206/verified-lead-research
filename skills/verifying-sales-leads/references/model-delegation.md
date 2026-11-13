@@ -12,13 +12,13 @@ When the client can run subagents on a smaller model (for example Claude Code), 
 
 In Claude Code the agents ship with this repository: as a plugin they are `verified-lead-research:lead-scout` and `verified-lead-research:lead-assessor`; in a session opened in the repository they are `lead-scout` and `lead-assessor`. If neither is available, use a general-purpose subagent with the model set explicitly and paste the agent file's instructions (`agents/*.md` at the repository root) into its prompt.
 
-Delegation never changes the acceptance gate. Assessors only write decisions; `build_assessments.py`, `check_assessments.py`, and the finalizer still verify every quote against its page and every exclusion check, so a weaker assessment can only fall to `review`, never become `accepted`.
+Delegation never changes the acceptance gate. Assessors only write decisions; `build_assessments.py`, `check_assessments.py`, and the finalizer verify every quote against its page and every exclusion check. They can downgrade, never promote an AI `review` or `rejected` recommendation. Literal verification does not prove that the assessor interpreted the business role, geography, or ownership correctly: an incorrect AI `accepted` recommendation with matching excerpts can still pass. Retain the main conversation's semantic review below.
 
 ## Discovery
 
 Write the localized queries yourself, then give each `lead-scout` a few queries, the campaign's `excluded_types`, and its own output file, e.g. `runs/<run>/raw-candidates-1.json`. Combine the files as one JSON array and run `prepare_candidates.py`, which normalizes and deduplicates. Glance at the list before crawling; drop obvious non-companies.
 
-The client's built-in web search can be limited to one country. Choose the method per market and buyer type with [discovery-methods.md](discovery-methods.md). For country-targeted search, pass the scout `python`, `scripts`, `country` (e.g. `DE`) and `lang` (e.g. `de`) so it runs `scripts/search_web.py`. It needs `BRAVE_SEARCH_API_KEY`, or in a cloud session a network secret for `api.search.brave.com` with header `X-Subscription-Token`. If neither is available, say so instead of relying on the built-in search for that market.
+The client's built-in search coverage can vary by environment. Choose the method per market and buyer type with [discovery-methods.md](discovery-methods.md); test coverage with a few localized queries rather than inferring it from a platform name or a US-only availability message. If the user authorizes country-targeted external search, pass the scout `python`, `scripts`, `country` (e.g. `DE`) and `lang` (e.g. `de`) for `scripts/search_web.py`. It needs `BRAVE_SEARCH_API_KEY`, or a supported cloud network secret for `api.search.brave.com` with header `X-Subscription-Token`. Without external API authorization or a key, retain client search and public directories, disclose observed limitations, and do not promise a count.
 
 ## Assessment
 
