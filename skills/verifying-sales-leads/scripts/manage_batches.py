@@ -105,26 +105,34 @@ def initialize(campaign_path: Path, run_dir: Path) -> dict[str, Any]:
     return export_outputs(run_dir)
 
 
-def add_candidates(run_dir: Path, input_path: Path) -> dict[str, Any]:
+def add_candidates(run_dir: Path, input_path: Path, priority: int | None = None) -> dict[str, Any]:
     payload = json.loads(input_path.read_text(encoding="utf-8"))
     if not isinstance(payload, list):
         raise ValueError("candidate input must be a JSON array")
     connection = connect(run_dir)
     added = 0
     duplicates = 0
+    reprioritized = 0
     invalid = []
     # Recompute semantic identity from saved URLs; never rewrite legacy PK/FK keys.
     seen_companies = {company_key(row['url']) for row in connection.execute('SELECT url FROM candidates')}
+    queued_rows = queued_by_company(connection) if priority is not None else {}
     for raw in payload:
         try:
             candidate = {"url": raw} if isinstance(raw, str) else dict(raw)
             candidate["url"] = canonicalize_url(candidate["url"])
             domain = company_key(candidate["url"])
+            if priority is not None and "priority" not in candidate:
+                candidate["priority"] = priority
+            candidate_priority(candidate)
         except (KeyError, TypeError, ValueError) as exc:
             invalid.append({"candidate": raw, "reason": str(exc)})
             continue
         if domain in seen_companies:
-            duplicates += 1
+            if priority is not None and raise_queued_priority(connection, queued_rows.get(domain), priority):
+                reprioritized += 1
+            else:
+                duplicates += 1
             continue
         cursor = connection.execute(
             """
@@ -146,10 +154,50 @@ def add_candidates(run_dir: Path, input_path: Path) -> dict[str, Any]:
         "status": "candidates_added",
         "added": added,
         "duplicates_skipped": duplicates,
+        "reprioritized": reprioritized,
         "invalid": invalid,
         "candidates_discovered": discovered,
     }
     return result
+
+
+def queued_by_company(connection: sqlite3.Connection) -> dict[str, sqlite3.Row]:
+    return {company_key(row["url"]): row for row in
+            connection.execute("SELECT domain, url, payload_json FROM candidates WHERE status = 'queued'")}
+
+
+def raise_queued_priority(connection: sqlite3.Connection, row: sqlite3.Row | None, priority: int) -> bool:
+    """Raise the priority of a still-queued candidate for the same company.
+
+    Lets a run measure acceptance rates on a mixed first batch and then move a
+    buyer type forward by adding its file again with --priority. Batched or
+    completed candidates, and lower priorities, are left unchanged.
+    """
+    if row is None:
+        return False
+    payload = json.loads(row["payload_json"])
+    if stored_priority(payload) >= priority:
+        return False
+    payload["priority"] = priority
+    connection.execute("UPDATE candidates SET payload_json = ? WHERE domain = ?",
+                       (json.dumps(payload, ensure_ascii=False), row["domain"]))
+    return True
+
+
+def stored_priority(payload: dict[str, Any]) -> int:
+    """Priority of a saved payload; a malformed hand edit counts as 0 instead of stopping the run."""
+    try:
+        return candidate_priority(payload)
+    except ValueError:
+        return 0
+
+
+def candidate_priority(candidate: dict[str, Any]) -> int:
+    """Higher numbers are batched first; missing means 0. Order never affects acceptance."""
+    value = candidate.get("priority", 0)
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"priority must be an integer: {value!r}")
+    return value
 
 
 def accepted_count(connection: sqlite3.Connection) -> int:
@@ -211,10 +259,13 @@ def next_batch(run_dir: Path) -> dict[str, Any]:
         }
 
     limit = min(int(campaign.get("batch_size", 50)), maximum - checked)
-    queued = connection.execute(
-        "SELECT domain FROM candidates WHERE status = 'queued' ORDER BY rowid LIMIT ?",
-        (limit,),
+    # Highest priority first, then discovery order. Legacy payloads without a
+    # priority count as 0, so existing runs keep their original order.
+    rows = connection.execute(
+        "SELECT domain, payload_json FROM candidates WHERE status = 'queued' ORDER BY rowid"
     ).fetchall()
+    ranked = sorted(enumerate(rows), key=lambda item: (-stored_priority(json.loads(item[1]["payload_json"])), item[0]))
+    queued = [row for _, row in ranked[:limit]]
     if not queued:
         connection.close()
         return {
@@ -269,6 +320,10 @@ def progress_summary(connection: sqlite3.Connection, campaign: dict[str, Any]) -
     maximum = int(campaign["max_candidates"])
     open_batches = connection.execute("SELECT COUNT(*) FROM batches WHERE status = 'open'").fetchone()[0]
     queued = connection.execute("SELECT COUNT(*) FROM candidates WHERE status = 'queued'").fetchone()[0]
+    queued_by_priority: dict[str, int] = {}
+    for row in connection.execute("SELECT payload_json FROM candidates WHERE status = 'queued'"):
+        level = str(stored_priority(json.loads(row["payload_json"])))
+        queued_by_priority[level] = queued_by_priority.get(level, 0) + 1
     discovered = connection.execute("SELECT COUNT(*) FROM candidates").fetchone()[0]
     completed_batches = connection.execute("SELECT COUNT(*) FROM batches WHERE status = 'completed'").fetchone()[0]
     if accepted >= target:
@@ -292,6 +347,7 @@ def progress_summary(connection: sqlite3.Connection, campaign: dict[str, Any]) -
         "batch_size": int(campaign.get("batch_size", 50)),
         "candidates_discovered": discovered,
         "candidates_queued": queued,
+        "queued_by_priority": dict(sorted(queued_by_priority.items(), key=lambda item: -int(item[0]))),
         "candidates_checked": checked,
         "accepted_available": accepted,
         "accepted_exported": min(accepted, target),
@@ -558,6 +614,9 @@ def main() -> int:
     add_parser = subparsers.add_parser("add-candidates")
     add_parser.add_argument("--run-dir", required=True, type=Path)
     add_parser.add_argument("--input", required=True, type=Path)
+    add_parser.add_argument("--priority", type=int,
+                            help="batching priority for these candidates (higher first; default 0); "
+                                 "a candidate's own priority field wins")
 
     next_parser = subparsers.add_parser("next-batch")
     next_parser.add_argument("--run-dir", required=True, type=Path)
@@ -588,7 +647,7 @@ def main() -> int:
     if args.command == "init":
         result = initialize(args.campaign, args.run_dir)
     elif args.command == "add-candidates":
-        result = add_candidates(args.run_dir, args.input)
+        result = add_candidates(args.run_dir, args.input, args.priority)
     elif args.command == "next-batch":
         result = next_batch(args.run_dir)
     elif args.command == "complete-batch":

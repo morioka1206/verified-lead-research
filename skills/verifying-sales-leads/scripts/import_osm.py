@@ -10,6 +10,10 @@ discovery provenance. Websites that are social profiles, link hubs, review
 sites, marketplaces, or shared hosting tenants are skipped, because their
 host does not identify one company.
 
+Use --preset for common buyer types (see PRESETS), for example
+--preset steak-restaurant --preset butcher. Values of list-valued keys such as
+cuisine ("japanese;sushi") are matched as list items.
+
 Example:
   python import_osm.py --tag amenity=cafe --tag shop=tea --area US-OR --area US-WA \
       --output runs/<run>/discovery-osm-cafe.json --exclude-candidates runs/<run>
@@ -18,7 +22,9 @@ Example:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import re
 import sqlite3
 import sys
 import time
@@ -55,10 +61,37 @@ SKIP_HOST_SUFFIXES = (
 )
 
 
+# Keys whose OSM values are semicolon-separated lists ("japanese;sushi"), so an
+# exact match would miss most places. They are matched as list items instead.
+LIST_VALUED_KEYS = {"cuisine"}
+SAFE_VALUE = re.compile(r"^[A-Za-z0-9_:.-]+$")
+
+# Named tag groups for common buyer types. Values follow OSM's documented tags.
+PRESETS: dict[str, list[str]] = {
+    "butcher": ["shop=butcher"],
+    "deli": ["shop=deli"],
+    "department-store": ["shop=department_store"],
+    "steak-restaurant": ["cuisine=steak_house", "cuisine=argentinian", "cuisine=brazilian", "cuisine=barbecue"],
+    "japanese-restaurant": ["cuisine=japanese", "cuisine=teppanyaki"],
+    "cafe": ["amenity=cafe"],
+    "tea-coffee-shop": ["shop=tea", "shop=coffee"],
+    "bakery": ["shop=bakery", "shop=pastry"],
+    "supermarket": ["shop=supermarket"],
+}
+
+
+def tag_selector(key: str, value: str) -> str:
+    if key in LIST_VALUED_KEYS:
+        # Values are limited to SAFE_VALUE; only "." is special in the regex. A
+        # backslash would be consumed by Overpass string escaping, so use a class.
+        return f'["{key}"~"(^|;) *{value.replace(".", "[.]")} *(;|$)"]'
+    return f'["{key}"="{value}"]'
+
+
 def build_query(tags: list[tuple[str, str]], area: str, timeout: int) -> str:
     selectors = "".join(
-        f'nwr["{key}"="{value}"]["website"](area.a);\n'
-        f'nwr["{key}"="{value}"]["contact:website"](area.a);\n'
+        f'nwr{tag_selector(key, value)}["website"](area.a);\n'
+        f'nwr{tag_selector(key, value)}["contact:website"](area.a);\n'
         for key, value in tags
     )
     return (
@@ -68,10 +101,12 @@ def build_query(tags: list[tuple[str, str]], area: str, timeout: int) -> str:
     )
 
 
-def fetch_with_fallback(query: str, endpoints: list[str], timeout: int) -> dict[str, Any]:
-    """Try each endpoint in order; raise the last error if all fail."""
+def fetch_with_fallback(query: str, endpoints: list[str], timeout: int, pause: float = 0.0) -> dict[str, Any]:
+    """Try each endpoint in order, pausing before each fallback; raise the last error if all fail."""
     last: Exception | None = None
-    for endpoint in endpoints:
+    for position, endpoint in enumerate(endpoints):
+        if position and pause:
+            time.sleep(pause)
         try:
             return fetch_overpass(query, endpoint, timeout)
         except Exception as exc:  # try the next mirror
@@ -114,8 +149,18 @@ def normalize_website(raw: str) -> str | None:
     return f"{parts.scheme}://{parts.hostname}/"
 
 
+def matched_tags(tags: dict[str, str], wanted: list[tuple[str, str]]) -> list[str]:
+    found = []
+    for key, value in wanted:
+        present = tags.get(key, "")
+        items = [item.strip() for item in present.split(";")] if key in LIST_VALUED_KEYS else [present]
+        if value in items:
+            found.append(f"{key}={value}")
+    return found
+
+
 def elements_to_candidates(
-    elements: Iterable[dict[str, Any]], area: str, tag_label: str
+    elements: Iterable[dict[str, Any]], area: str, tag_label: str, wanted: list[tuple[str, str]] | None = None
 ) -> list[dict[str, Any]]:
     by_key: dict[str, dict[str, Any]] = {}
     for element in elements:
@@ -128,8 +173,12 @@ def elements_to_candidates(
             continue
         key = company_key(url)
         osm_url = f"https://www.openstreetmap.org/{element.get('type')}/{element.get('id')}"
+        matched = matched_tags(tags, wanted or [])
         if key in by_key:
             by_key[key]["osm_locations"] += 1
+            for tag in matched:
+                if tag not in by_key[key]["osm_matched_tags"]:
+                    by_key[key]["osm_matched_tags"].append(tag)
             continue
         address = ", ".join(
             part for part in (tags.get("addr:city"), tags.get("addr:state")) if part
@@ -142,6 +191,7 @@ def elements_to_candidates(
             "osm_brand": tags.get("brand") or "",
             "osm_address_hint": address,
             "osm_locations": 1,
+            "osm_matched_tags": matched,
         }
     return list(by_key.values())
 
@@ -185,15 +235,19 @@ def parse_tags(values: list[str]) -> list[tuple[str, str]]:
         if "=" not in value:
             raise ValueError(f"tag must be key=value: {value}")
         key, tag_value = value.split("=", 1)
-        if not key or not tag_value or '"' in value:
+        if not key or not tag_value or '"' in value or "\\" in value:
             raise ValueError(f"invalid tag: {value}")
+        if key in LIST_VALUED_KEYS and not SAFE_VALUE.match(tag_value):
+            raise ValueError(f"invalid {key} value: {tag_value}")
         tags.append((key, tag_value))
     return tags
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--tag", action="append", required=True, help="OSM tag key=value, repeatable")
+    parser.add_argument("--tag", action="append", default=[], help="OSM tag key=value, repeatable")
+    parser.add_argument("--preset", action="append", default=[], choices=sorted(PRESETS),
+                        help="named tag group for a buyer type; repeatable, combinable with --tag")
     parser.add_argument("--area", action="append", help="ISO3166-2 area such as US-CA; repeatable")
     parser.add_argument("--all-us-states", action="store_true", help="Query every US state and DC")
     parser.add_argument("--output", required=True, type=Path)
@@ -209,7 +263,10 @@ def main() -> int:
     parser.add_argument("--raw-dir", type=Path, help="Save raw Overpass responses here for audit")
     args = parser.parse_args()
 
-    tags = parse_tags(args.tag)
+    tag_values = [tag for preset in args.preset for tag in PRESETS[preset]] + list(args.tag)
+    if not tag_values:
+        parser.error("give --tag or --preset")
+    tags = list(dict.fromkeys(parse_tags(tag_values)))
     areas = [f"US-{state}" for state in US_STATES] if args.all_us_states else (args.area or [])
     if not areas:
         parser.error("give --area or --all-us-states")
@@ -224,23 +281,32 @@ def main() -> int:
         previous = json.loads(args.output.read_text(encoding="utf-8"))
         results.extend(previous)
         seen.update(company_key(item["url"]) for item in previous)
-    for index, area in enumerate(areas):
+    # Areas already fetched for this exact tag set are skipped on a rerun, so a
+    # rerun only retries the areas that failed.
+    progress_path = args.output.with_name(args.output.name + ".areas.json")
+    progress = json.loads(progress_path.read_text(encoding="utf-8")) if progress_path.exists() else {}
+    done_areas = set(progress.get(tag_label, []))
+    pending = [area for area in areas if area not in done_areas]
+    if len(pending) < len(areas):
+        print(f"skipping {len(areas) - len(pending)} area(s) already fetched for these tags", file=sys.stderr)
+    for index, area in enumerate(pending):
         if args.limit and len(results) >= args.limit:
             break
         if index:
             time.sleep(args.pause)
         query = build_query(tags, area, args.timeout)
         try:
-            payload = fetch_with_fallback(query, endpoints, args.timeout)
+            payload = fetch_with_fallback(query, endpoints, args.timeout, args.pause)
         except Exception as exc:  # network errors are reported, not fatal
             failures.append({"area": area, "error": str(exc)[:200]})
             print(f"[{area}] failed: {exc}", file=sys.stderr)
             continue
         if args.raw_dir:
             args.raw_dir.mkdir(parents=True, exist_ok=True)
-            (args.raw_dir / f"overpass-{area}.json").write_text(json.dumps(payload), encoding="utf-8")
+            tag_hash = hashlib.sha256(tag_label.encode("utf-8")).hexdigest()[:8]
+            (args.raw_dir / f"overpass-{area}-{tag_hash}.json").write_text(json.dumps(payload), encoding="utf-8")
         new = 0
-        for candidate in elements_to_candidates(payload.get("elements", []), area, tag_label):
+        for candidate in elements_to_candidates(payload.get("elements", []), area, tag_label, tags):
             if args.max_locations and candidate["osm_locations"] > args.max_locations:
                 continue
             key = company_key(candidate["url"])
@@ -254,11 +320,15 @@ def main() -> int:
         print(f"[{area}] elements={len(payload.get('elements', []))} new={new} total={len(results)}")
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(results, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+        if not (args.limit and len(results) >= args.limit):  # a limit can cut an area short
+            done_areas.add(area)
+            progress[tag_label] = sorted(done_areas)
+            progress_path.write_text(json.dumps(progress, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(results, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     print(json.dumps({"candidates": len(results), "areas": len(areas), "failures": failures}, ensure_ascii=False))
-    return 0 if len(failures) < len(areas) else 1
+    return 0 if not pending or len(failures) < len(pending) else 1
 
 
 if __name__ == "__main__":
